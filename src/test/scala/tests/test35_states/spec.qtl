@@ -1,0 +1,6 @@
+
+
+prop p : Forall x . r(x) -> !q(x)
+  where r(x) := b(x) | @ (r(x) & !s(x))
+
+

@@ -1,0 +1,6 @@
+
+prop p : Forall f . @ (! close(f) S open(f)) -> ! open(f)
+
+// Method 2.
+// We again need only to remember files that were opened but not closed!
+

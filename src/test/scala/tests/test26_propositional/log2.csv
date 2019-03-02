@@ -1,0 +1,9 @@
+morning
+login,klaus
+login,mary
+open,data
+close,data
+access,klaus,data
+logout,klaus
+logout,mary
+evening

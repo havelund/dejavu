@@ -1,0 +1,26 @@
+
+The problem arises when there are more than one variable involved
+in a subformula.
+
+Lets look at the following subformula:
+
+Forall y Forall z (r(y,z) --> (!q(y) S p(z)))
+
+And the sequence 1. p(1) 2. q(3) 3. q(7) 4. p(2) 5. q(18) 6. p(1) 7. p(2)
+
+We have the following bdds according to steps:
+
+0. False
+1. p(1) : z=1 & y=All
+2. q(3) : z=1 & y=All\{3}
+3. q(7) : z=1 & y=All\{3,7},
+4. p(2) : (z=1 & y=All\{3,7}) or (z=2 & y=All)
+5. q(18) : (z=1 & y=All\{3,7,18} or (z=2 & y=All\{18})
+6. p(1) : (z=1 & y=All) or (z=2 & y=All\{18})  At this point we can drop 3 and 7
+
+The reason we can drop 3 is that is behaves like 11111 (lets say 31)
+w.r.t. to all values of z (in particular, z=1, z=2 and z=whatever), and same for 7.
+
+7. p(2) : (z=1 & y=All) or (z=2 & y=All)  At this point we can drop 18.
+
+Again we can drop 18 because it behaves like 11111 w.r.t. all values of z

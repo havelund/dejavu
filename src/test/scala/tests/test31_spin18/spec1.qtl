@@ -1,0 +1,8 @@
+
+event login(user,session), logout(user)
+
+prop p : Exists x . forall y . !logout(y) S login (y,x)
+
+
+
+

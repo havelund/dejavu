@@ -1,0 +1,2 @@
+
+prop p : Forall x . Exists y . H ((a(x) -> [ b(x,y) , c(y) )))

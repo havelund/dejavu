@@ -1,0 +1,7 @@
+login,klaus
+login,karen
+open,telemetry
+access,karen,telemetry
+close,telemetry
+logout,klaus
+logout,karen

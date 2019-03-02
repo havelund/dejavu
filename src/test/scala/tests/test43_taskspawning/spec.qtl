@@ -1,0 +1,18 @@
+
+
+prop spawning :
+  Forall x . Forall y . Forall z .
+    report(y,x,z) -> spawned(x,y)
+    where
+    spawned(x,y) := @ spawned(x,y) | spawn(x,y) | Exists d . (@spawned(x,d) & spawn(d,y))
+
+/*
+Generates:
+
+prop spawning :
+  Forall x . Forall y . Forall z .
+    report(y,x,z) -> spawned(x,y)
+    where
+    spawned(x,y) := @ spawned(x,y) | spawn(x,y) | Exists d . (@spawned(x,d) & spawn(d,y)),
+    spawned(x,d) := @ spawned(x,d) | spawn(x,d) | Exists y . (@spawned(x,y) & spawn(y,d))
+*/

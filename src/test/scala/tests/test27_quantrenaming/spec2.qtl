@@ -1,0 +1,6 @@
+
+prop p :
+  forall f . forall x . (write(f,x) -> opened(f))
+
+pred opened(g) = exists x . P open(g,x)
+

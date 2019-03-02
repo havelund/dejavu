@@ -1,0 +1,6 @@
+
+prop p : Forall c .
+  [ CMD_DIS(c) , CMD_COM(c) ) &
+  (c = "MOB_REP" | c = "ARM_REP")
+    ->
+  !TLM_ERROR

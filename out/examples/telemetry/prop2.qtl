@@ -1,0 +1,23 @@
+
+// The second property, `telemetry2`, expresses the same property as `telemetry1`, but in 
+// this case using two rules, more closely reflecting how we would model this using a state 
+// machine with two states for each channel `x`: `closed(x)` and `open(x)`: 
+
+prop telemetry2:
+  Forall x .
+    closed(x) -> !telem(x)
+    where
+    closed(x) :=
+        (!@true & !toggle(x))
+      | (@closed(x) & !toggle(x))
+      | (@open(x) & toggle(x)),
+    open(x) :=
+        (@open(x) & !toggle(x))
+      | (@closed(x) & toggle(x))
+
+// The rule `closed(x)` is defined as a disjunction between three alternatives. The first 
+// states that this predicate is true if we are in the initial state (the only state where 
+// `@true` is false), and there is no `toggle(x)` event. The next alternative states that 
+// `closed(x)` was true in the previous state and there is no `toggle(x)` event. The third 
+// alternative states that we in the previous state were in the `open(x)` state and we 
+// observe a `toggle(x)` event. Similarly for the `open(x)` rule.

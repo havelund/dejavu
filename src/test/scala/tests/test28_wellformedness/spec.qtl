@@ -1,0 +1,34 @@
+
+// Predicates declared multiple times:
+
+pred predTwice(x) = P login(x)
+pred predTwice(x) = P login(x)
+
+// Properties declared multiple times:
+
+prop propTwice : P login(x)
+prop propTwice : P login(x)
+
+// Predicates not declared/used with consistent number of arguments:
+
+prop propArgs : forall x . P predArgs(x,x)
+pred predArgs(x) = P login(x)
+
+// Predicates not used with the same number of arguments:
+
+prop propInconsistent : forall x . open(x) -> @ ! exists y . P open(x,y)
+
+// No free variables:
+
+pred predFree(x) = P cleared(x,y)
+prop propFree : exists x . P cleared(x,y)
+
+// No hiding of variables:
+
+prop propHide : forall x . (logout(x) -> exists x . P login(x))
+pred predHide(x,y) = exists y . P cleared(x,y)
+
+// No unused variables:
+
+pred predUnused(x,y) = P login(x)
+prop propUnused : forall x . exists y . P login(y)

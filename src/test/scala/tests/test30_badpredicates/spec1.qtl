@@ -1,0 +1,16 @@
+
+pred login(user,password), logout(user)
+
+event open(file), close(file)
+
+// event send(file,file)
+
+// event cleared(user)
+
+pred loggedIn(u) = exists x . P login(u,x)
+pred loggedOut(u) = [logout(u), exists x. login(u,x))
+
+prop p : forall x . logout(x) -> (loggedIn(x) & cleared(x))
+
+prop q : logout("klaus") -> P login("klaus",79328723789238724983)
+

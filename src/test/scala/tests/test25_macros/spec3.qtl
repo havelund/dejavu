@@ -1,0 +1,30 @@
+
+// Macro definitions have with purpose been "sprinkled" around to be out of order
+// to test that order is of no importance.
+
+pred inner13(yy,kk) = yy < kk
+pred inner12(ii,yy,kk) = report(ii,yy) -> inner13(yy,kk)
+pred safe1(ii,kk) = H (inner11(ii,kk))
+pred inner11(ii,kk) = forall y . inner12(ii,y,kk)
+
+pred begin(ii,kk) = init(ii,kk) & kk < 100
+pred inner41(ii,xx) = !close(ii) S begin(ii,xx)
+
+prop p :
+  forall it .
+    important(it) ->
+      (
+        safe1(it,1000) &
+        safe2(it) &
+        P safe3(it) &
+        safe4(it)
+      )
+
+pred safe3(ii) = cleared(ii)
+
+pred inner22(ii) = exists m . P start(ii,m)
+pred inner21(ii) = !close(ii) S open(ii)
+pred safe2(ii) = inner21(ii) & inner22(ii)
+
+pred safe4(ii) = exists x . inner41(ii,x)
+

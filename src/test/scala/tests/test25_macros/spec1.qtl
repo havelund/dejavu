@@ -1,0 +1,15 @@
+
+pred safe1(i,k) = H (forall y . (report(i,y) -> y < k))
+pred safe2(i) = (!close(i) S open(i)) & exists m . P start(i,m)
+pred safe3(i) = cleared(i)
+pred begin(i,k) = init(i,k) & k < 100
+
+prop p :
+  forall it .
+    important(it) ->
+      (
+        safe1(it,1000) &
+        safe2(it) &
+        P safe3(it) &
+        exists x . (!close(it) S begin(it,x))
+      )

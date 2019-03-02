@@ -1,0 +1,7 @@
+prop access :
+  access ->
+    [login,logout)
+      &
+    [open,close)
+      &
+    [morning,evening)

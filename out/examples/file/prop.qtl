@@ -1,0 +1,5 @@
+
+// If a file is closed, then in the previous step, it must have been opened in the 
+// past with some access mode (and not closed since then).
+
+prop file : Forall f . close(f) -> Exists m . @ [open(f,m),close(f))

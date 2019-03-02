@@ -1,0 +1,10 @@
+
+events login(user,password), logout(user), open(file), close(file)
+
+pred isLoggedIn(u) = @ exists pw . [login(u,pw),logout(u))
+pred isOpen(f) = @ [open(f),close(f))
+
+prop p : forall u . logout(u) -> isLoggedIn(u)
+
+prop q : forall f . close(f) -> isOpen(f)
+

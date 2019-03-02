@@ -1,0 +1,14 @@
+create,map1,set1
+iterator,set1,it1
+next,it1
+next,it1
+next,it1
+create,map2,set2
+iterator,set2,it2
+next,it2
+next,it2
+update,map1
+next,it2
+update,map2
+next,it2
+

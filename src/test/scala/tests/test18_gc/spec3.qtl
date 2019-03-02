@@ -1,0 +1,24 @@
+
+
+prop p : Forall f . open(f) -> @ (((!open(f) S close(f))) | ! P open(f))
+
+// Well, the previous property is too strong, requiring a file to have been closed
+// before it can be opened. The following property is weaker:
+
+// On a 2nd thought: if we had a weak since implemented, then it should compact it as Method 2
+// (but if we don't and split it into two cases: Perious and strong Since, then
+// the subformulas would keep growing, although the disjunction of them could be
+// compressed: maybe there is a way to further improve here, i.e., when a formula
+// can be compressed, then you do not need to look at its subformulas, but I am not
+// sure this is 100% true at the moment).
+
+// Now we want to add to it that we cannot open a file twice if it wasn't closed in between:
+//
+// Method 1:
+//
+// prop p : forall f: open(f) -> @(~open(f) S close(f)))
+//
+// Now, we must remember all the files that we closed.
+// So even if we have only 7 files simultaneously opened,
+// then we need to remember all the files that were ever closed
+// and not opened again: could be an unbounded number.

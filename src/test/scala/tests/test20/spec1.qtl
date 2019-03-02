@@ -1,0 +1,14 @@
+
+prop p : Forall c .
+  [ CMD_DISPATCH(c) , CMD_COMPLETE(c) ) &
+  (c = "MOB_NAV_PRM_SET" | c = "ARM_PRM_SETDMP")
+    ->
+  !TLM_TR_ERROR
+
+// cmdExec :- CMD_DISPATCH before CMD_COMPLETE
+//   where CMD_DISPATCH.cmd = CMD_COMPLETE.cmd
+//   map {cmd -> CMD_DISPATCH.cmd}
+//
+// okRace :- TLM_TR_ERROR during cmdExec
+//   where cmdExec.cmd = "MOB_NAV_PRM_SET" | cmdExec.cmd = "ARM_PRM_SETDMP"
+

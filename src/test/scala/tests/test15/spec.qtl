@@ -1,0 +1,2 @@
+
+prop p: Forall x . a(x) -> Exists y . P b(y) & x < y

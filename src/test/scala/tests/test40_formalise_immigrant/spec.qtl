@@ -1,0 +1,8 @@
+prop immigration :
+  Forall y .
+    (Exists z. P (parent(y,z) | parent(z,y)))
+       ->
+    (P immigrated(y) | Exists x  . (P immigrated(x)) & descendent(x,y))
+    where
+       descendent(x,y) := parent(x,y) | @descendent(x,y) | Exists z . (@descendent(x,z) & parent(z,y))
+

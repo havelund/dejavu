@@ -1,0 +1,6 @@
+prop secure :
+  forall u . forall f .
+    access(u,f) ->
+      [login(u),logout(u))
+        &
+      [open(f),close(f))

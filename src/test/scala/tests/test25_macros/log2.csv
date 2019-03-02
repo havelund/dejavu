@@ -1,0 +1,100 @@
+--- good:
+cleared,file1
+start,file1,expedite
+report,file1,900
+report,file1,910
+open,file1
+init,file1,99
+important,file1
+close,file1
+--- safe1:
+cleared,file2
+start,file2,expedite
+report,file2,900
+*** ERROR: ***
+report,file2,1001
+open,file2
+init,file2,99
+*** DETECT: ***
+important,file2
+close,file2
+--- good:
+cleared,file3
+start,file3,expedite
+report,file3,900
+report,file3,910
+open,file3
+init,file3,99
+important,file3
+close,file3
+--- safe2 (a):
+cleared,file4
+start,file4,expedite
+report,file4,900
+report,file4,910
+open,file4
+*** ERROR: ***
+close,file4
+init,file4,99
+*** DETECT: ***
+important,file4
+--- good:
+cleared,file5
+start,file5,expedite
+report,file5,900
+report,file5,910
+open,file5
+init,file5,99
+important,file5
+close,file42
+--- safe2 (b):
+cleared,file6
+*** ERROR: ***
+start,file6**,expedite
+report,file6,900
+report,file6,910
+open,file6
+init,file6,99
+*** DETECT: ***
+important,file6
+close,file6
+--- good:
+cleared,file7
+start,file7,expedite
+report,file7,900
+report,file7,910
+open,file7
+init,file7,99
+important,file7
+close,file7
+--- safe3:
+*** ERROR: ***
+cleared,file8**
+start,file8,expedite
+report,file8,900
+report,file8,910
+open,file8
+init,file8,99
+*** DETECT: ***
+important,file8
+close,file8
+--- good:
+cleared,file9
+start,file9,expedite
+report,file9,900
+report,file9,910
+open,file9
+init,file9,99
+important,file9
+close,file9
+--- last exists:
+cleared,file10
+start,file10,expedite
+report,file10,900
+report,file10,910
+open,file10
+*** ERROR: ***
+init,file10,999
+*** DETECT: ***
+important,file10
+close,file10

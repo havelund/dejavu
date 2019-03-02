@@ -1,0 +1,7 @@
+login,mike,1
+login,john,2
+logout,mike
+login,mike,2
+login,ann,1
+logout,ann
+login,ann,2

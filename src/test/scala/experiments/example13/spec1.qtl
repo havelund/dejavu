@@ -1,0 +1,2 @@
+
+prop p: Forall x . Exists y . x < y & P a(x,y)

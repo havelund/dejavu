@@ -1,0 +1,11 @@
+immigrated,john
+immigrated,lotte
+parent,john,mike
+parent,mike,allen
+parent,allen,linda
+parent,allen,mary
+parent,mary,lone
+parent,lotte,buddy
+parent,buddy,linda
+parent,buddy,hugo
+parent,alex,tom

@@ -1,0 +1,13 @@
+acq,1,A
+acq,1,B
+rel,1,B
+rel,1,A
+acq,2,B
+acq,2,C
+rel,2,C
+rel,2,B
+acq,3,B
+acq,3,A
+rel,3,A
+rel,3,B
+end

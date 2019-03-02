@@ -1,0 +1,12 @@
+
+// A thread going to sleep should not hold any locks.
+// At most one thread can acquire a lock at a time.
+// A thread can only release a lock it has acquired.
+
+prop locksBasic :
+  Forall t . Forall l .
+    (
+      (sleep(t) -> ![acq(t,l),rel(t,l))) &
+      (acq(t,l) -> ! exists s . @ [acq(s,l),rel(s,l))) &
+      (rel(t,l) -> @ [acq(t,l),rel(t,l)))
+    )

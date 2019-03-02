@@ -1,0 +1,38 @@
+
+prop fifo :
+ Forall x .
+  (enter(x) -> ! @ P enter(x)) &
+  (exit(x) -> ! @ P exit(x)) &
+  (exit(x) -> @ P enter(x)) &
+  (Forall y . (exit(y) & P (enter(y) & @ P enter(x))) -> @ P exit(x))
+  //(Forall y . (exit(y) & @ P exit(x)) -> P (enter(y) & @ P enter(x)))
+
+// Alternative formulation to make monitoring more efficient (it was not more efficient):
+
+/*
+prop fifo:
+ Forall x. Forall y. 
+  (exit(x) -> @(!exit(x) S enter(x)))
+  &
+  (@ (!exit(x) S enter(x)) -> !enter(x))
+  &
+  !(
+    exit(x) & 
+    @(
+      (!enter(x) & !exit(x) & !enter(y) & !exit(y)) S (
+        exit(y) & 
+        @(
+          (!enter(x) & !exit(x) & !enter(y) & !exit(y)) S (
+            enter(y) & 
+            @(
+              (!enter(x) & !exit(x) & !enter(y) & !exit(y)) S enter(x)
+            )
+          )
+        )
+      )
+    )
+  )
+*/
+
+// It allows entering and exiting with the same name multiple times (the previous property
+// assumes it does not happen).

@@ -1,0 +1,15 @@
+
+// If a user logs out, the user must have logged in in the past with some password,
+// and not logged out since then. 
+
+// The property is defined using a predicate macro isLoggedIn(u). 
+// In addition, the events login(u,pw) and logout(u) referred to in the 
+// property are all declared up front to ensure the correctness of the property itself.
+
+pred login(u,pw)
+pred logout(u)
+
+pred isLoggedIn(u) = @ exists pw . [login(u,pw),logout(u))
+
+prop p : forall u . logout(u) -> isLoggedIn(u)
+

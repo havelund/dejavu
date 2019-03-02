@@ -1,0 +1,13 @@
+
+// The property concerns the use of Java collections, which are part of the Java
+// library API. The property requires that if a collection is created from a java.util.Map
+// object (i.e the key set of the map), and then a java.util.Iterator object is created 
+// from that collection, and the original map thereafter is updated, then thereafter 
+// the next() method cannot be called on that iterator. 
+
+prop unsafeMapIt :
+  Forall m . Forall c . Forall i .
+    !(next(i) & P (update(m) & P (iterator(c,i) & P create(m,c))))
+
+
+

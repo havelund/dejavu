@@ -1,0 +1,15 @@
+
+// No unused variables:
+
+prop spawning :
+  Forall x . Forall y . Forall z .
+    report(y,x,z) -> spawned(x,y)
+    where
+    spawned(x,y) := @ spawned(x,x) | spawn(x,x) | Exists d . (@spawned(x,d) & spawn(d,x))
+
+
+
+
+
+
+

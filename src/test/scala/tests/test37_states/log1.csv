@@ -1,0 +1,15 @@
+son,john,mike
+son,mike,allen
+son,allen,jim
+son,jim,peter
+son,jim,kaj
+son,peter,ole
+son,kaj,sylvain
+own_house,john,house1
+own_house,mike,house1
+own_house,mike,house2
+own_house,john,house2
+own_house,allen,house1
+own_house,jim,house1
+own_house,kaj,house1
+own_house,kaj,house2

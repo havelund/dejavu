@@ -1,0 +1,10 @@
+
+// If a user accesses a file then the user must have logged in (and not logged 
+// out since then), and the file must have been opened (and not closed since then).
+
+prop access :
+  Forall user . Forall file .
+    access(user,file) ->
+      [login(user),logout(user))
+        &
+      [open(file),close(file))

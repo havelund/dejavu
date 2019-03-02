@@ -1,0 +1,9 @@
+open,f1
+open,f2
+open,f3
+close,f1
+close,f2
+close,f3
+open,f1
+open,f4
+write,f4,isola

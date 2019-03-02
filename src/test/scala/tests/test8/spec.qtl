@@ -1,0 +1,7 @@
+
+// Commands executions are identified by a command name 'c' and a
+// execution number 'n''. When a command execution is reported
+// successful, there should have been no error in that execution
+// since the dispatch of the command.
+
+prop noFailure : Forall c . Forall n . suc(c,n) -> (!err(n) S dis(c,n))

@@ -1,0 +1,4 @@
+
+pred loggedIn(u) = exists x . P login(u,x)
+
+prop p : forall x . logout(x) -> loggedIn(x)

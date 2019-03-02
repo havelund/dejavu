@@ -1,0 +1,6 @@
+
+// A file can only be opened if in the previous step, either:
+// it was closed on the past and not opened since then, or
+// it was never opened in the past.
+
+prop p : Forall f . open(f) -> @ (((!open(f) S close(f))) | ! P open(f))

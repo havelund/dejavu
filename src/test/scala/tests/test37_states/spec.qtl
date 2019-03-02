@@ -1,0 +1,7 @@
+
+prop p :
+  Forall x . Forall y . Forall h .
+     (descendent(x,y) & P own_house(y,h)) -> P own_house(x,h)
+     where
+       descendent(x,y) := @descendent(x,y) | son(x,y) | Exists z . @descendent(x,z) & son(z,y)
+

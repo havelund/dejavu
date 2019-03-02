@@ -1,0 +1,2 @@
+
+prop p : Forall i . Forall a . (bid(i,a) | sell(i)) -> exists r . @ [list(i,r),sell(i))

@@ -1,0 +1,6 @@
+
+Experiments with BDDs for using SAT solving for selecting BDDs, and
+for doing garbage collection.
+
+
+

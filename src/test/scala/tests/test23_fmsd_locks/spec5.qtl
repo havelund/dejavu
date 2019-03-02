@@ -1,0 +1,14 @@
+
+
+// Requirements:
+// R1: A thread going to sleep should not hold any locks.
+// R2: At most one thread can acquire a lock at a time.
+// R3: A thread can only release a lock it has acquired.
+
+prop basic :
+  Forall t . Forall l .
+    (
+      (sleep(t) -> ![acq(t,l),rel(t,l))) &
+      (acq(t,l) -> ! exists s . @ [acq(s,l),rel(s,l))) &
+      (rel(t,l) -> @ [acq(t,l),rel(t,l)))
+    )

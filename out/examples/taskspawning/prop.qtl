@@ -1,0 +1,25 @@
+
+// A new extension of DejaVu is the notion of _rules_, which are part of a property 
+// definition. As an example, consider the following property about threads being spawned in 
+// an operating system. We want to ensure that when a thread `y` reports some data `d` 
+// back to another thread `x`, then thread `y` has been spawned by thread `x` either 
+// directly, or transitively via a sequence of spawn events. The events are
+// `spawn(x,y)` (thread `x` spawns thread `y`)
+// and `report(y,x,d)` (thread `y` reports data `d`
+// back to thread `x`). For this we need to compute a transitive closure of spawning 
+// relationships, here expressed with the rule `spawning(x,y)`. This property can be stated 
+// as following using a rule named `spawning`:
+
+prop spawning :
+  Forall x . Forall y . Forall d .
+    report(y,x,d) -> spawned(x,y)
+    where
+    spawned(x,y) := @ spawned(x,y) | spawn(x,y) | Exists z . (@spawned(x,z) & spawn(z,y))
+
+// The property states that if there is a `report(y,x,d)` event (thread `y` reporting data 
+// `d` back to thread `x`), then `spawned(x,y)` must hold, defined as follows: either 
+// `spawned(x,y)` held in the previous state, or there is a `spawn(x,y)` in the current 
+// state, or, the interesting case: `spawned(x,z)` held in the previous state for some `z`, 
+// and  `spawn(z,y)` holds in the current state. This last disjunct forms the transitive 
+// closure.
+

@@ -1,0 +1,4 @@
+
+// An item can be listed at most once.
+
+prop p : Forall i . Forall r . list(i,r) -> ! exists s . @ P list(i,s)

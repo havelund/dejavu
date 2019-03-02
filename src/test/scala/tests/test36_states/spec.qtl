@@ -1,0 +1,10 @@
+prop p:
+  Forall x . ON(x) -> !run(x)
+  where
+    OFF(x) :=
+        (! @true)
+      | (@OFF(x) & !on(x))
+      | (@ON(x) & off(x)),
+    ON(x) :=
+        (@ON(x) & !off(x))
+      | (@OFF(x) & on(x))

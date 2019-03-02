@@ -1,0 +1,5 @@
+
+// A file can only be closed if in the previous step, it was opened in the past,
+// and not closed since then.
+
+prop p : Forall f . close(f) -> @ (!close(f) S open(f))

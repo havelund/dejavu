@@ -1,0 +1,13 @@
+
+
+pred reportFromSpawned(t1,t2) = report(t2,t1) -> spawned(t1,t2)
+pred beforeOrNow(t1,t2) = @ spawned(t1,t2) | spawn(t1,t2)
+pred transitiveClosure(t1,t2) = Exists t . (@spawned(t1,t) & spawn(t,t2))
+
+
+prop spawning_with_macros :
+  Forall x . Forall y .
+    reportFromSpawned(x,y)
+    where
+    spawned(x,y) := beforeOrNow(x,y) | transitiveClosure(x,y)
+

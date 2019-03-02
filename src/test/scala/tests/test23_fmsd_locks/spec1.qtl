@@ -1,0 +1,13 @@
+
+// Requirements:
+// R1: A thread acquiring a lock should eventually release the lock.
+// R2: At most one thread can acquire a lock at a time.
+// R3: A thread can only release a lock it has acquired.
+
+prop basic :
+  Forall t . Forall l .
+    (
+      (end -> ![acq(t,l),rel(t,l))) &
+      (acq(t,l) -> ! exists s . @ [acq(s,l),rel(s,l))) &
+      (rel(t,l) -> @ [acq(t,l),rel(t,l)))
+    )

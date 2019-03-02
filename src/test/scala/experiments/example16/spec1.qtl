@@ -1,0 +1,4 @@
+
+prop p : Forall f . close(f) -> P open(f)
+
+// This property needs an unbounded amount of memory.

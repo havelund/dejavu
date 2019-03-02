@@ -1,0 +1,17 @@
+
+// No free variables:
+
+prop telemetry2:
+  Forall x .
+    closed(x) -> !telem(x)
+    where
+    closed(x) :=
+        (!@true & !toggle(y))
+      | (@closed(z) & !toggle(x))
+      | (@open(x) & toggle(x)),
+    open(x) :=
+        (@open(x) & !toggle(x))
+      | (@closed(x) & toggle(x))
+
+
+

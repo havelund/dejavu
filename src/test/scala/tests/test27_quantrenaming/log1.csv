@@ -1,0 +1,9 @@
+open,file1,write
+open,file2,write
+open,file3,write
+write,file1,data
+write,file2,data
+write,file3,data
+close,file1
+close,file2
+close,file3

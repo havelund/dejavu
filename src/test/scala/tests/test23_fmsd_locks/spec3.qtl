@@ -1,0 +1,12 @@
+
+// Requirements:
+// R5: Resources that have been declared as being in conflict cannot be allocated at the same time.
+
+prop conflicts :
+  Forall s1 . Forall k1 .
+    acq(s1,k1) ->
+      ! (
+          exists s2 . exists k2 .
+            @ [acq(s2,k2),rel(s2,k2)) &
+            P (conflict(k1,k2) | conflict(k2,k1))
+        )

@@ -1,0 +1,2 @@
+prop incr : 
+  Forall i . Forall a1 . Forall a2 . @ P bid(i,a1) & bid(i,a2) -> a1 < a2

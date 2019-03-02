@@ -1,0 +1,2 @@
+
+prop p : Forall i . Forall r . P list(i,r) & sell(i) ->  exists a . P bid(i,a) & a >= r

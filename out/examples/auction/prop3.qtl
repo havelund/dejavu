@@ -1,0 +1,7 @@
+
+// It is only possible to bid on or sell an item that is in auction, meaning that
+// it has been listed with a minimum reserve price r, and not yet sold.
+
+pred inAuction(x) = exists r . @ [list(x,r),sell(x))
+
+prop p : Forall i . Forall a . (bid(i,a) | sell(i)) -> inAuction(i)

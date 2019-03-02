@@ -1,0 +1,11 @@
+
+prop secure :
+  Forall u . Forall f .
+    access(u,f) ->
+      [login(u),logout(u))
+        &
+      [open(f),close(f))
+
+prop openclose :
+  Forall g .
+    close(g) -> P open(g)

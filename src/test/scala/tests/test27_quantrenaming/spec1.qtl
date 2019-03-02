@@ -1,0 +1,7 @@
+
+prop p :
+  (forall f . forall x . (write(f,x) -> exists y . P open(f,y)))
+  &
+  (forall f . close(f) -> (exists x . P open(f,x) & (exists y . @ [write(f,y),close(f)))))
+
+

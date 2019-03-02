@@ -1,0 +1,9 @@
+
+prop p :
+  (
+    [ CMD_DISPATCH("MOB_NAV_PRM_SET",4) , CMD_COMPLETE("MOB_NAV_PRM_SET",4) )
+      |
+    [ CMD_DISPATCH("ARM_PRM_SETDMP",4) , CMD_COMPLETE("ARM_PRM_SETDMP",4) )
+  )
+  ->
+  !TLM_TR_ERROR

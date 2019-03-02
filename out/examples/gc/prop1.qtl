@@ -1,0 +1,4 @@
+
+// A file can only be closed if it has been opened in the past.
+
+prop p : Forall f . close(f) -> P open(f)

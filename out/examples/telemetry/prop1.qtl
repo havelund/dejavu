@@ -1,0 +1,13 @@
+
+// This property concerns a radio on board a spacecraft, which communicates over different 
+// channels (quantified over in the formula), which can be turned on and off with a 
+// `toggle(x)` - they are initially off. Telemetry can only be sent to ground over a channel 
+// `x` with the `telem(x)` event when radio channel `x` is toggled on. The property cannot be 
+// expressed without the use of rules. This is formalized as follows:
+
+prop telemetry1:
+  Forall x .
+    closed(x) -> !telem(x)
+    where
+    closed(x) := toggle(x) <-> @!closed(x)
+

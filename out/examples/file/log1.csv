@@ -1,0 +1,10 @@
+open,file1,write
+open,file2,read
+write,file1,hello
+close,file1
+read,file2
+close,file2
+close,file1
+open,file1,write
+write,file1,world
+close,file1

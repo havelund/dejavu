@@ -1,0 +1,14 @@
+create,1,10
+create,2,20
+iterator,10,100
+iterator,20,200
+next,100
+next,200
+next,100
+next,200
+update,1
+next,200
+create,3,30
+iterator,30,300
+update,3
+next,300

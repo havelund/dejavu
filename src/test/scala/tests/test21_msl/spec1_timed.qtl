@@ -1,0 +1,11 @@
+
+// The following spec results in false positives due to the quantification
+// over time, which by the way also slows down the analysis from 1 to 20 seconds.
+
+prop p : Forall c . Forall t1 . Forall t2 .
+  [ CMD_DISPATCH(c,t1) , CMD_COMPLETE(c,t2) ) &
+  (c = "MOB_NAV_PRM_SET" | c = "ARM_PRM_SETDMP")
+    ->
+  (!Exists t3 . TLM_TR_ERROR(t3))
+
+

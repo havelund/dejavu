@@ -1,0 +1,19 @@
+
+prop p :
+  Forall c .
+    (
+      [ COMM_BEGIN(c) , COMM_END(c) )
+        &
+      [ VDP_START , VDP_STOP )
+    )
+    ->
+    !TASK_STARVATION
+
+
+//  comm :- COMM_BEGIN before COMM_END
+//    map {id -> COMM_BEGIN.id}
+//
+//  vdp :- VDP_START before VDP_STOP
+//
+//  okStarvation :- TASK_STARVATION during (vdp slice comm)
+//    map {id -> comm.id}

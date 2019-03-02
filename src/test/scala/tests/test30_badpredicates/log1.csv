@@ -1,0 +1,11 @@
+login,klaus,42
+login,doron,10
+open,data
+write,data,
+logout,klaus
+logout,doron
+login,mike,42
+login,doron,10
+open,data
+logout,mike
+

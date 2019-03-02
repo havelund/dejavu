@@ -1,0 +1,32 @@
+
+// Requirements:
+// R6: If two threads access (read or write) the same shared variable, and one of the threads write
+//     to the variable, there must exist a lock, which both threads hold whenever they access the variable.
+
+
+prop datarace :
+  Forall t1 . Forall t2 . Forall x .
+    (
+      (P (read(t1,x) | write(t1,x)))
+      &
+      (P write(t2,x))
+    )
+    ->
+    Exists l .
+      (
+        H ((read(t1,x) | write(t1,x)) -> [acq(t1,l),rel(t1,l)))
+        &
+        H ((read(t2,x) | write(t2,x)) -> [acq(t2,l),rel(t2,l)))
+      )
+
+/*
+prop datarace :
+  Forall t1 . Forall t2 . Forall x .
+    P write(t1,x) ->
+    Exists l .
+      H (
+        ((read(t1,x) | write(t1,x)) -> [acq(t1,l),rel(t1,l)))
+          &
+        ((read(t2,x) | write(t2,x)) -> [acq(t2,l),rel(t2,l)))
+      )
+*/

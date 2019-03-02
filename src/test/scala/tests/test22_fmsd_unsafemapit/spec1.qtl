@@ -1,0 +1,10 @@
+
+// prop unsafeMapIt :
+//   Forall i . next(i) -> exists m . exists c . (!update(m) S (iterator(c,i) & P create(m,c)))
+
+prop unsafeMapIt :
+  Forall i . Forall c . Forall m .
+    (next(i) & P (iterator(c,i) & P create(m,c)))
+    ->
+    (!update(m) S iterator(c,i))
+

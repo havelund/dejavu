@@ -1,0 +1,18 @@
+
+prop p : Forall f . close(f) -> @ (!close(f) S open(f))
+
+// This property needs as much memory as the number of
+// simultaneously opened files, and is more accurate (not only we cannot
+// close an unopened file, we cannot close it twice.
+
+// So if there have only 7 files that can be simultaneously opened, we need only 3
+// bits (+one for 111).
+
+// Here is a more elaborate version with a nested existential quantifier, and using
+// interval notation:
+
+// prop p : forall f . close(f) -> exists m . @ [ open(f,m) , close(f) )
+
+// and using the S operator:
+
+// prop p : forall f . close(f) -> exists m . @ (!close(f) S open(f,m))

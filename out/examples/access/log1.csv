@@ -1,0 +1,8 @@
+login,john
+open,data
+access,john,data
+close,data
+logout,john
+open,data
+access,john,data
+close,data

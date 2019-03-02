@@ -1,0 +1,4 @@
+
+pred inAuction(x) = exists r . @ [list(x,r),sell(x))
+
+prop p : Forall i . Forall a . (bid(i,a) | sell(i)) -> inAuction(i)

@@ -1,0 +1,10 @@
+
+// This is the same property as property 1, except for the use of predicate macros
+// representing that a user is logged in and that a file is open.
+
+pred loggedIn(u) = [login(u),logout(u))
+pred opened(f)   = [open(f),close(f))
+
+prop access :
+  Forall u . Forall f .
+    access(u,f) -> loggedIn(u) & opened(f)

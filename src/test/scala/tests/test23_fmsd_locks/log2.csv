@@ -1,0 +1,11 @@
+acq,1,A
+acq,2,B
+acq,3,C
+acq,4,D
+acq,5,C
+rel,5,C
+rel,3,C
+rel,2,B
+rel,1,A
+rel,6,E
+end

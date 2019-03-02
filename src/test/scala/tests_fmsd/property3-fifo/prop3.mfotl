@@ -1,0 +1,12 @@
+
+FORALL x.
+  (
+    (enter(x) IMPLIES NOT PREVIOUS ONCE enter(x)) AND
+    (exit(x) IMPLIES NOT PREVIOUS ONCE  exit(x)) AND
+    (exit(x) IMPLIES PREVIOUS ONCE  enter(x)) AND
+    FORALL y. (
+      (exit(y) AND ONCE (enter(y) AND PREVIOUS ONCE enter(x)))
+        IMPLIES
+      PREVIOUS ONCE exit(x)
+    )
+  )

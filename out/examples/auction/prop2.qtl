@@ -1,0 +1,5 @@
+
+// An item can only be sold if the latest bid is higher than or equal to the minimum
+// price the item was listed for before the aution started.
+
+prop p : Forall i . Forall r . P list(i,r) & sell(i) ->  exists a . P bid(i,a) & a >= r

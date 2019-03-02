@@ -1,0 +1,3 @@
+
+
+prop p : Forall f. (Exists d. write(f,d)) -> !close(f) S open(f)

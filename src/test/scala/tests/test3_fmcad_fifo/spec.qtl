@@ -1,0 +1,8 @@
+
+prop fifo :
+
+ Forall x .
+  (enter(x) -> ! @ P enter(x)) &
+  (exit(x) -> ! @ P exit(x)) &
+  (exit(x) -> @ P enter(x)) &
+  (Forall y . (exit(y) & P (enter(y) & @ P enter(x))) -> @ P exit(x))

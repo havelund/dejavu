@@ -1,0 +1,5 @@
+
+
+prop unsafeMapIt :
+  Forall m . Forall c . Forall i .
+    !(next(i) & P (update(m) & P (iterator(c,i) & P create(m,c))))

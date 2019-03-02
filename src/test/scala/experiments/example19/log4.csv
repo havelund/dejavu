@@ -1,0 +1,3 @@
+open,input,read
+open,output,write
+close,out
