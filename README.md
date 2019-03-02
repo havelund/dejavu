@@ -352,7 +352,7 @@ This is formalized as follows:
         ->
         (! @ P (@ [acq(t2,l2),rel(t2,l2)) & acq(t2,l1)))
 
-#### No dataraces:
+#### No dataraces
 
 If two threads access (read or write) the same shared variable, and one of the threads write to the variable, there must exist a lock, which both threads hold whenever they access the variable.
 
@@ -373,7 +373,7 @@ This is formalized as follows:
             H ((read(t2,x) | write(t2,x)) -> [acq(t2,l),rel(t2,l)))
           )
 
-#### Calling Earth:
+### Calling Earth
 
 This property concerns a radio on board a spacecraft, which communicates over different channels (quantified over in the formula), which each can be turned on and off with a `toggle(x)` - they are all initially off. Telemetry can only be sent to ground over a channel `x`, with the `telem(x)` event, when radio channel `x` is toggled on. The property cannot be expressed in pure past time LTL, that is, without the use of rules.
 
