@@ -969,7 +969,7 @@ abstract class Formula(val monitor: Monitor) {
 
 
 /*
-  prop p : Forall x . r(x) -> (Exists y . !q(y) S P p(y))
+  prop p : Forall x . r(x) -> (Exists y . !q(y) S[<= 4] P p(y))
 */
 
 class Formula_p(monitor: Monitor) extends Formula(monitor) {
@@ -1104,12 +1104,12 @@ class Formula_p(monitor: Monitor) extends Formula(monitor) {
   now = Array.fill(9)(bddGenerator.False)
 
   txt = Array(
-    "Forall x . r(x) -> (Exists y . !q(y) S[<= 3] p(y))",
-    "r(x) -> (Exists y . !q(y) S[<= 3] p(y))",
+    "Forall x . r(x) -> (Exists y . !q(y) S[<= 4] p(y))",
+    "r(x) -> (Exists y . !q(y) S[<= 4] p(y))",
     "r(x)",
-    "Exists y . !q(y) S[<= 3] p(y)",
-    "Exists t . !q(y) S[<= 3] p(y)",
-    "!q(y) S[<= 3] p(y)",
+    "Exists y . !q(y) S[<= 4] p(y)",
+    "Exists t . !q(y) S[<= 4] p(y)",
+    "!q(y) S[<= 4] p(y)",
     "!q(y)",
     "q(y)",
     "p(y)"
