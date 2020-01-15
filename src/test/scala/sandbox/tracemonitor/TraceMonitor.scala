@@ -969,7 +969,7 @@ abstract class Formula(val monitor: Monitor) {
 
 
 /*
-  prop p : Forall x . r(x) -> (Exists y . !q(y) S[<= 4] P p(y))
+  prop p : Forall x . r(x) -> (Exists y . !q(y) S[<= 4] p(y))
 */
 
 class Formula_p(monitor: Monitor) extends Formula(monitor) {
