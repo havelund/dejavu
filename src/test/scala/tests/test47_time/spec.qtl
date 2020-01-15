@@ -1,0 +1,3 @@
+
+prop p : Forall x .
+  r(x) -> (Exists y . !q(y) S p(y))

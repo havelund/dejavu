@@ -32,7 +32,7 @@ object Verify {
   val LONGTEST : Boolean = true
 
   /**
-    * Flag indicating whether a test took place. Becomes false when a long test is executed but the <code>LONG</code> flag is false.
+    * Flag indicating whether a test took place. Becomes false when a long test is executed but the <code>LONGTEST</code> flag is false.
     * Is called by the result verification functions.
     */
 
