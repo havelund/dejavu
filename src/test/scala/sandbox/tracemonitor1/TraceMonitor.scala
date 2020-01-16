@@ -1,4 +1,4 @@
-package sandbox.tracemonitor
+package sandbox.tracemonitor1
 
 /* Generic Monitoring Code common for all properties. */
 
@@ -987,14 +987,14 @@ class Formula_p(monitor: Monitor) extends Formula(monitor) {
     (t,u,d,c) match {
       case (Nil,Nil,Nil,_) => bddGenerator.True
       case (t_bit :: t_rest, u_bit :: u_rest, d_bit :: d_rest, c_prev :: c_cur :: c_rest) =>
-        val bit = u_bit.biimp(t_bit.xor(d_bit).xor(c_prev))
-        val carrier = c_cur.biimp(
+        val u_bit_def = u_bit.biimp(t_bit.xor(d_bit).xor(c_prev))
+        val c_cur_def = c_cur.biimp(
           (t_bit.and(d_bit)).or(
             t_bit.and(c_prev).or(
               d_bit.and(c_prev)
             )
         ))
-        bit.and(carrier.and(addConstRest(t_rest, u_rest, d_rest, c_cur :: c_rest)))
+        u_bit_def.and(c_cur_def.and(addConstRest(t_rest, u_rest, d_rest, c_cur :: c_rest)))
     }
   }
 
@@ -1015,51 +1015,48 @@ class Formula_p(monitor: Monitor) extends Formula(monitor) {
     }
   }
 
+  def generateBDDList(positions: Array[Int]) : List[BDD] = {
+    for (pos <- positions.toList) yield bddGenerator.theOneBDDFor(pos)
+  }
+
   val var_x :: var_y :: Nil = declareVariables(("x",false), ("y",false))
 
-  val (t1Pos,t2Pos,t3Pos) = (6,7,8)
-  val (u1Pos,u2Pos,u3Pos) = (9,10,11)
-  val (d1Pos,d2Pos,d3Pos) = (12,13,14)
-  val (c1Pos,c2Pos,c3Pos) = (15,16,17)
-  val (l1Pos,l2Pos,l3Pos) = (18,19,20)
+  val tPosArray = (6 to 8).toArray
+  val uPosArray = (9 to 11).toArray
+  val dPosArray = (12 to 14).toArray
+  val cPosArray = (15 to 17).toArray
+  val lPosArray = (18 to 20).toArray
 
-  val t1 : BDD = bddGenerator.theOneBDDFor(t1Pos)
-  val t2 : BDD = bddGenerator.theOneBDDFor(t2Pos)
-  val t3 : BDD = bddGenerator.theOneBDDFor(t3Pos)
+  val tBDDList = generateBDDList(tPosArray)
+  val uBDDList = generateBDDList(uPosArray)
+  val dBDDList = generateBDDList(dPosArray)
+  val cBDDList = generateBDDList(cPosArray)
+  val lBDDList = generateBDDList(lPosArray)
 
-  val u1 : BDD = bddGenerator.theOneBDDFor(u1Pos)
-  val u2 : BDD = bddGenerator.theOneBDDFor(u2Pos)
-  val u3 : BDD = bddGenerator.theOneBDDFor(u3Pos)
+  val uBDDListHighToLow = uBDDList.reverse
+  val lBDDListHighToLow = lBDDList.reverse
 
-  val d1 : BDD = bddGenerator.theOneBDDFor(d1Pos)
-  val d2 : BDD = bddGenerator.theOneBDDFor(d2Pos)
-  val d3 : BDD = bddGenerator.theOneBDDFor(d3Pos)
+  val tPosArrayHighToLow = tPosArray.reverse
+  val dPosArrayHighToLow = dPosArray.reverse
+  val lPosArrayHighToLow = lPosArray.reverse
 
-  val c1 : BDD = bddGenerator.theOneBDDFor(c1Pos)
-  val c2 : BDD = bddGenerator.theOneBDDFor(c2Pos)
-  val c3 : BDD = bddGenerator.theOneBDDFor(c3Pos)
-
-  val l1 : BDD = bddGenerator.theOneBDDFor(l1Pos)
-  val l2 : BDD = bddGenerator.theOneBDDFor(l2Pos)
-  val l3 : BDD = bddGenerator.theOneBDDFor(l3Pos)
-
-  val var_t_quantvar : BDD = bddGenerator.getQuantVars(Array(t1Pos, t2Pos, t3Pos))
-  val var_d_quantvar : BDD = bddGenerator.getQuantVars(Array(d1Pos, d2Pos, d3Pos))
-  val var_c_quantvar : BDD = bddGenerator.getQuantVars(Array(c1Pos, c2Pos, c3Pos))
-  val var_l_quantvar : BDD = bddGenerator.getQuantVars(Array(l1Pos, l2Pos, l3Pos))
+  val var_t_quantvar : BDD = bddGenerator.getQuantVars(tPosArray)
+  val var_d_quantvar : BDD = bddGenerator.getQuantVars(dPosArray)
+  val var_c_quantvar : BDD = bddGenerator.getQuantVars(cPosArray)
+  val var_l_quantvar : BDD = bddGenerator.getQuantVars(lPosArray)
 
   val u_to_t_map = bddGenerator.B.makePair()
-  u_to_t_map.set(u1Pos,t1Pos)
-  u_to_t_map.set(u2Pos,t2Pos)
-  u_to_t_map.set(u3Pos,t3Pos)
+  for ((u,t) <- uPosArray.zip(tPosArray)) {
+    u_to_t_map.set(u,t)
+  }
 
-  val zeroTime : BDD = bddGenerator.B.buildCube(0,Array(t1Pos,t2Pos,t3Pos))
+  val zeroTime : BDD = bddGenerator.B.buildCube(0,tPosArrayHighToLow)
 
   val Delta = 1
-  val DeltaBDD = bddGenerator.B.buildCube(Delta,Array(d3Pos,d2Pos,d1Pos))
+  val DeltaBDD = bddGenerator.B.buildCube(Delta,dPosArrayHighToLow)
 
   val limit1 = 4
-  val limit1BDD = bddGenerator.B.buildCube(limit1,Array(l3Pos,l2Pos,l1Pos))
+  val limit1BDD = bddGenerator.B.buildCube(limit1,lPosArrayHighToLow)
 
   override def evaluate(): Boolean = {
     now(8) = build("p")(V("y"))
@@ -1071,8 +1068,8 @@ class Formula_p(monitor: Monitor) extends Formula(monitor) {
         .and(pre(5))
         .and(DeltaBDD)
         .and(limit1BDD)
-        .and(addConst(List(t1,t2,t3),List(u1,u2,u3),List(d1,d2,d3),List(c1,c2,c3)))
-        .and(gtConst(List(u3,u2,u1),List(l3,l2,l1)).not())
+        .and(addConst(tBDDList,uBDDList,dBDDList,cBDDList))
+        .and(gtConst(uBDDListHighToLow,lBDDListHighToLow).not())
         .exist(var_t_quantvar)
         .exist(var_d_quantvar)
         .exist(var_c_quantvar)

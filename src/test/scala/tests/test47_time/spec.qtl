@@ -1,3 +1,8 @@
 
 prop p : Forall x .
-  r(x) -> (Exists y . !q(y) S p(y))
+  r(x) ->
+    (
+      (Exists y . true S p(y))
+      &
+      (Exists z . true S q(z))
+    )
