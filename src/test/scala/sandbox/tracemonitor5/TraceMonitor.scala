@@ -1,4 +1,6 @@
 
+package sandbox.tracemonitor5
+
 /* Generic Monitoring Code common for all properties. */
 
 import net.sf.javabdd.{BDD, BDDFactory}
@@ -1111,3 +1113,149 @@ abstract class Formula(val monitor: Monitor) {
     }
   }
 }
+
+
+
+/*
+  prop p : Forall x . P a(x)
+*/
+
+class Formula_p(monitor: Monitor) extends Formula(monitor) {
+
+  val var_x :: Nil = declareVariables(("x",false))
+
+  // Declarations related to timed properties:
+
+  val startTimeVar : Int = 1 * Options.BITS
+  val offsetTimeVar : Int = Options.BITS_PER_TIME_VAR
+
+  val (sBegin,sEnd) = (startTimeVar,startTimeVar + offsetTimeVar - 1)
+  val (uBegin,uEnd) = (sEnd + 1, sEnd + offsetTimeVar)
+  val (dBegin,dEnd) = (uEnd + 1, uEnd + offsetTimeVar)
+  val (cBegin,cEnd) = (dEnd + 1, dEnd + offsetTimeVar)
+  val (lBegin,lEnd) = (cEnd + 1, cEnd + offsetTimeVar)
+
+  val tPosArray = (sBegin to sEnd).toArray
+  val uPosArray = (uBegin to uEnd).toArray
+  val dPosArray = (dBegin to dEnd).toArray
+  val cPosArray = (cBegin to cEnd).toArray
+  val lPosArray = (lBegin to lEnd).toArray
+
+  val tBDDList = generateBDDList(tPosArray)
+  val uBDDList = generateBDDList(uPosArray)
+  val dBDDList = generateBDDList(dPosArray)
+  val cBDDList = generateBDDList(cPosArray)
+  val lBDDList = generateBDDList(lPosArray)
+
+  val uBDDListHighToLow = uBDDList.reverse
+  val lBDDListHighToLow = lBDDList.reverse
+
+  val tPosArrayHighToLow = tPosArray.reverse
+  val dPosArrayHighToLow = dPosArray.reverse
+  val lPosArrayHighToLow = lPosArray.reverse
+
+  val var_t_quantvar : BDD = bddGenerator.getQuantVars(tPosArray)
+  val var_d_quantvar : BDD = bddGenerator.getQuantVars(dPosArray)
+  val var_c_quantvar : BDD = bddGenerator.getQuantVars(cPosArray)
+  val var_l_quantvar : BDD = bddGenerator.getQuantVars(lPosArray)
+
+  val u_to_t_map = bddGenerator.B.makePair()
+  for ((u,t) <- uPosArray.zip(tPosArray)) {
+    u_to_t_map.set(u,t)
+  }
+
+  val zeroTime : BDD = bddGenerator.B.buildCube(0,tPosArrayHighToLow)
+
+  // End of declarations related to timed properties
+
+
+  override def evaluate(): Boolean = {
+    // assignments1 (leaf nodes that are not rule calls):
+    now(2) = build("a")(V("x"))
+    // assignments2 (rule nodes excluding what is below @ and excluding leaf nodes):
+    // assignments3 (rule calls):
+    // assignments4 (the rest of rules that are below @ and excluding leaf nodes):
+    // assignments5 (main formula excluding leaf nodes):
+    now(1) = now(2).or(pre(1))
+    now(0) = now(1).forAll(var_x.quantvar)
+
+    debugMonitorState()
+
+    val error = now(0).isZero
+    if (error) monitor.recordResult()
+    tmp = now
+    now = pre
+    pre = tmp
+    touchedByLastEvent = emptyTouchedSet
+    !error
+  }
+
+  val limitMap : Map[Int,BDD] =
+    Map(
+
+    )
+
+  val maxTimeLimit = 0 + 1
+  var DeltaBDD : BDD = null
+
+  override def setTime(actualDelta: Int) {
+
+  }
+
+  varsInRelations = Set()
+  val indices: List[Int] = List(1)
+
+  pre = Array.fill(3)(bddGenerator.False)
+  now = Array.fill(3)(bddGenerator.False)
+
+  txt = Array(
+    "Forall x . P a(x)",
+    "P a(x)",
+    "a(x)"
+  )
+
+  debugMonitorState()
+}
+
+
+
+/* The specialized Monitor for the provided properties. */
+
+class PropertyMonitor extends Monitor {
+  def eventsInSpec: Set[String] = Set("a")
+
+  formulae ++= List(new Formula_p(this))
+}
+
+
+
+object TraceMonitor {
+  def main(args: Array[String]): Unit = {
+    if (1 <= args.length && args.length <= 3) {
+      if (args.length > 1) Options.BITS = args(1).toInt
+      val m = new PropertyMonitor
+      val file = args(0)
+      if (args.length == 3 && args(2) == "debug") Options.DEBUG = true
+      if (args.length == 3 && args(2) == "profile") Options.PROFILE = true
+      try {
+        openResultFile("dejavu-results")
+        if (Options.PROFILE) {
+          openProfileFile("dejavu-profile.csv")
+          m.printProfileHeader()
+        }
+        m.submitCSVFile(file)
+      } catch {
+        case e: Throwable =>
+          println(s"\n*** $e\n")
+        // e.printStackTrace()
+      } finally {
+        closeResultFile()
+        if (Options.PROFILE) closeProfileFile()
+      }
+    } else {
+      println("*** call with these arguments:")
+      println("<logfile> [<bits> [debug|profile]]")
+    }
+  }
+}
+

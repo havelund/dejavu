@@ -15,6 +15,7 @@ object Options {
   var PROFILE: Boolean = false
   var PRINT: Boolean = false
   var BITS: Int = 20
+  var BITS_TIME : Int = 3
   var PRINT_LINENUMBER_EACH: Int = 1000
   var UNIT_TEST: Boolean = false
   var STATISTICS: Boolean = true
@@ -981,16 +982,29 @@ abstract class Formula(val monitor: Monitor) {
 class Formula_p(monitor: Monitor) extends Formula(monitor) {
 
   /**
-    * Adds a time value `d` to a time value `t`, resulting in the new time value `u`.
-    * Time values are represented by BDDs. Each such BDD `B` represents a sequence of
-    * bits `Bn,Bn-1,...,B1` mentioned from most significant bit to least significant but.
-    * The `c` the carrier bits used to carry
+    * Adds a time value `d` to a time value `t`, resulting in the new time value `u` using
+    * carrier bits `c` as auxiliary variables.
     *
-    * @param t
-    * @param u
-    * @param d
-    * @param c
-    * @return
+    * Time values are represented by BDDs. Each such BDD, call it  `B`, represents a sequence of
+    * bits `B1,...,Bn` mentioned from least significant bit to most significant bit. This
+    * allows a recursive algorithm, which adds bits from lowest to highest significant bit.
+    * The `c` the carrier bits used to carry over.
+    *
+    * E.g. say we want to add `t=01`` (the number 1) and `d=01` (the number 1). These are
+    * passed to this function as `10` and `10` respectively (least significant bits first).
+    * The function adds `1` and `1` giving `0` and resulting in carrier bit `c1` being `1`.
+    * `c1=1` is then used when adding the two `0` resulting in `1`, overall resulting in `01`
+    * with the least significant but mentioned first, hence this is
+    * `10` in normal bit format (the number 2).
+    *
+    * The function takes care of the first (least significant) bit addition, and then calls
+    * `addConstRest` for the rest of the bits.
+    *
+    * @param t the time value to add to (from previous event).
+    * @param u the resulting time value.
+    * @param d the time delta to add to `t` (the time difference between this and previous event).
+    * @param c the carrier bits used as auxiliary variable.
+    * @return the BDD defining the result `u` of the addition.
     */
 
   def addConst(t : List[BDD], u : List[BDD], d : List[BDD], c : List[BDD]) : BDD = {
@@ -1001,6 +1015,20 @@ class Formula_p(monitor: Monitor) extends Formula(monitor) {
         initBDD.and(initCarrier).and(addConstRest(t_rest, u_rest, d_rest, c_bit :: c_rest))
     }
   }
+
+  /**
+    * Adds a time value `d` to a time value `t`, resulting in the new time value `u` using
+    * carrier bits `c` as auxiliary variables.
+    *
+    * This function is called on all bits following the least significant bit. See
+    * `addConst`.
+    *
+    * @param t the time value to add to (from previous event).
+    * @param u the resulting time value.
+    * @param d the time delta to add to `t` (the time difference between this and previous event).
+    * @param c the carrier bits used as auxiliary variable.
+    * @return the BDD defining the result `u` of the addition.
+    */
 
   def addConstRest(t : List[BDD], u : List[BDD], d : List[BDD], c : List[BDD]) : BDD = {
     (t,u,d,c) match {
@@ -1017,8 +1045,33 @@ class Formula_p(monitor: Monitor) extends Formula(monitor) {
     }
   }
 
+  /**
+    * Returns true of the first `bit1` is one and the second `bit2` is zero.
+    *
+    * @param bit1 the first bit.
+    * @param bit2 the second bit.
+    * @return the `True` BDD if the first bit is one and the second is zero.
+    */
+
   def gtBit(bit1 : BDD, bit2 : BDD) : BDD =
     bit1.and(bit2.not())
+
+  /**
+    * Determines whether one time value `u` is strictly bigger than another `l`.
+    * The time values are presented with the most significant bit first, and the
+    * function recurses over the bits comparing them until the result becomes
+    * obvious.
+    *
+    * E.g. to compare binary `101` (number 5) to binary `110` (number 6) the
+    * function first compares the first two `1`s, which does not determine the
+    * result. It then moves on to the next two bits `0` and `1`, and here it becomes
+    * clear that the first number is not bigger than the second.
+    *
+    * @param u the first time value (the time difference of the current event)
+    * @param l the second time value (the limit constant associated with the S-operator)
+    * @return the result of the comparison, `True` if the first number is bigger than the second.
+    *         Otherwise `False`.
+    */
 
   def gtConst(u : List[BDD], l : List[BDD]) : BDD = {
     (u,l) match {
@@ -1034,11 +1087,22 @@ class Formula_p(monitor: Monitor) extends Formula(monitor) {
     }
   }
 
+  /**
+    * From a list of BDD variable-numbers (the JavaBDD package represents a
+    * variable by a number), the function returns a list of the BDDs, one for
+    * each of these variables. The BDD returns `1` for `1` and `0` for `0`.
+    *
+    * @param positions the numbers of the variables.
+    * @return the corresponding one-bit BDDs.
+    */
+
   def generateBDDList(positions: Array[Int]) : List[BDD] = {
     for (pos <- positions.toList) yield bddGenerator.theOneBDDFor(pos)
   }
 
   val var_x :: var_y :: var_z :: Nil = declareVariables(("x",false), ("y",false), ("z",false))
+
+  // @@@\
 
   val tPosArray = (9 to 11).toArray
   val uPosArray = (12 to 14).toArray
@@ -1079,12 +1143,6 @@ class Formula_p(monitor: Monitor) extends Formula(monitor) {
   val Delta = 1
   val DeltaBDD = bddGenerator.B.buildCube(Delta,dPosArrayHighToLow)
 
-  val limit1 = 3
-  val limit1BDD = bddGenerator.B.buildCube(limit1,l1PosArrayHighToLow)
-
-  val limit2 = 4
-  val limit2BDD = bddGenerator.B.buildCube(limit2,l2PosArrayHighToLow)
-
   override def evaluate(): Boolean = {
     now(13) = build("q")(V("z"))
     now(12) = bddGenerator.True
@@ -1092,13 +1150,14 @@ class Formula_p(monitor: Monitor) extends Formula(monitor) {
       now(12)
         .and(pre(11))
         .and(DeltaBDD)
-        .and(limit2BDD)
+        // .and(limit2BDD)
+        .and(limitMap(4))
         .and(addConst(tBDDList,uBDDList,dBDDList,cBDDList))
-        .and(gtConst(uBDDListHighToLow,l2BDDListHighToLow).not())
+        .and(gtConst(uBDDListHighToLow,l1BDDListHighToLow).not())
         .exist(var_t_quantvar)
         .exist(var_d_quantvar)
         .exist(var_c_quantvar)
-        .exist(var_l2_quantvar)
+        .exist(var_l1_quantvar)
         .replace(u_to_t_map)
     )
     now(10) = now(11).exist(var_t_quantvar)
@@ -1109,7 +1168,8 @@ class Formula_p(monitor: Monitor) extends Formula(monitor) {
       now(7)
         .and(pre(6))
         .and(DeltaBDD)
-        .and(limit1BDD)
+        // .and(limit1BDD)
+        .and(limitMap(3))
         .and(addConst(tBDDList,uBDDList,dBDDList,cBDDList))
         .and(gtConst(uBDDListHighToLow,l1BDDListHighToLow).not())
         .exist(var_t_quantvar)
@@ -1136,6 +1196,12 @@ class Formula_p(monitor: Monitor) extends Formula(monitor) {
     !error
   }
 
+  val limitMap : Map[Int,BDD] =
+    Map(
+      3 -> bddGenerator.B.buildCube(3,l1PosArrayHighToLow),
+      4 -> bddGenerator.B.buildCube(4,l1PosArrayHighToLow)
+    )
+
   varsInRelations = Set()
   val indices: List[Int] = List(11,6)
 
@@ -1158,6 +1224,8 @@ class Formula_p(monitor: Monitor) extends Formula(monitor) {
     "true",
     "q(z)"
   )
+
+  // @@@/
 
   debugMonitorState()
 }

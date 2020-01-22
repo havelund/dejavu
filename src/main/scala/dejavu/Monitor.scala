@@ -15,17 +15,11 @@ object Options {
   var PROFILE: Boolean = false
   var PRINT: Boolean = false
   var BITS: Int = 20
+  var BITS_PER_TIME_VAR : Int = 3 // TODO: should be calculated from spec!
   var PRINT_LINENUMBER_EACH: Int = 1000
   var UNIT_TEST: Boolean = false
   var STATISTICS: Boolean = true
 }
-
-/*
-
-bw.write(text)
-bw.close()
-
- */
 
 object Util {
   type Binding = Map[String, Any]
@@ -329,8 +323,10 @@ class BDDGenerator(F: Formula)(variables: List[(String, Boolean, Int)]) {
     result
   }
 
+  val nrOfTimeVariables = 5
+
   if (totalNumberOfBits > 0) {
-    B.setVarNum(totalNumberOfBits)
+    B.setVarNum(totalNumberOfBits + (nrOfTimeVariables * Options.BITS_PER_TIME_VAR))
   }
 
   /**
@@ -465,6 +461,21 @@ abstract class Monitor {
   var lineNr: Int = 0
   var garbageWasCollected: Boolean = false
   var statistics: TraceStatistics = new TraceStatistics(eventsInSpec)
+  var currentTime : Int = 0
+  var deltaTime : Int = 0
+
+  /**
+    * Sets the current time to the time indicated by the timestamp associated
+    * with the latest event. It specifically sets `deltaTime` to denote the
+    * difference between the previous time stamp and this one.
+    *
+    * @param timeStamp the new time value for the latest event.
+    */
+
+  def setTime(timeStamp : Int): Unit = {
+    deltaTime = timeStamp - currentTime
+    currentTime = timeStamp
+  }
 
   /**
     * Returns the set of events referred to in the specification, either defined, or referred to
@@ -538,6 +549,8 @@ abstract class Monitor {
     end()
   }
 
+  var timeStamp : Int = 0 // just used for testing // TODO, should not be needed
+
   /**
     * Submits an entire trace stored in CSV (Comma Separated Value format) format
     * to the monitor, as an alternative to submitting events one by one. This method
@@ -566,6 +579,8 @@ abstract class Monitor {
       for (i <- 1 until record.size()) {
         args += record.get(i)
       }
+      timeStamp += 1 // TODO: replace with real time stamp
+      setTime(timeStamp) // TODO: added, change to correct time
       submit(name, args.toList)
     }
     println(s"Processed $lineNr events")
@@ -596,6 +611,7 @@ abstract class Monitor {
   def evaluate(): Unit = {
     debug(s"\n$state\n")
     for (formula <- formulae) {
+      formula.setTime(deltaTime)
       if (!formula.evaluate()) {
         println(s"\n*** Property ${formula.name} violated on event number $lineNr:\n")
         println(state)
@@ -827,6 +843,140 @@ abstract class Formula(val monitor: Monitor) {
       debug(s"recording binding $name -> $value for subsequent relation updating")
     }
   }
+
+  /**
+    * Adds a time value `d` to a time value `t`, resulting in the new time value `u` using
+    * carrier bits `c` as auxiliary variables.
+    *
+    * Time values are represented by BDDs. Each such BDD, call it  `B`, represents a sequence of
+    * bits `B1,...,Bn` mentioned from least significant bit to most significant bit. This
+    * allows a recursive algorithm, which adds bits from lowest to highest significant bit.
+    * The `c` the carrier bits used to carry over.
+    *
+    * E.g. say we want to add `t=01`` (the number 1) and `d=01` (the number 1). These are
+    * passed to this function as `10` and `10` respectively (least significant bits first).
+    * The function adds `1` and `1` giving `0` and resulting in carrier bit `c1` being `1`.
+    * `c1=1` is then used when adding the two `0` resulting in `1`, overall resulting in `01`
+    * with the least significant but mentioned first, hence this is
+    * `10` in normal bit format (the number 2).
+    *
+    * The function takes care of the first (least significant) bit addition, and then calls
+    * `addConstRest` for the rest of the bits.
+    *
+    * @param t the time value to add to (from previous event).
+    * @param u the resulting time value.
+    * @param d the time delta to add to `t` (the time difference between this and previous event).
+    * @param c the carrier bits used as auxiliary variable.
+    * @return the BDD defining the result `u` of the addition.
+    */
+
+  def addConst(t : List[BDD], u : List[BDD], d : List[BDD], c : List[BDD]) : BDD = {
+    (t, u, d, c) match {
+      case (t_bit :: t_rest, u_bit :: u_rest, d_bit :: d_rest, c_bit :: c_rest) =>
+        val initBDD = u_bit.biimp(t_bit.xor(d_bit))
+        val initCarrier = c_bit.biimp(t_bit.and(d_bit))
+        initBDD.and(initCarrier).and(addConstRest(t_rest, u_rest, d_rest, c_bit :: c_rest))
+      case _ => assert(false,"addConst pattern match fails").asInstanceOf[BDD]
+    }
+  }
+
+  /**
+    * Adds a time value `d` to a time value `t`, resulting in the new time value `u` using
+    * carrier bits `c` as auxiliary variables.
+    *
+    * This function is called on all bits following the least significant bit. See
+    * `addConst`.
+    *
+    * @param t the time value to add to (from previous event).
+    * @param u the resulting time value.
+    * @param d the time delta to add to `t` (the time difference between this and previous event).
+    * @param c the carrier bits used as auxiliary variable.
+    * @return the BDD defining the result `u` of the addition.
+    */
+
+  def addConstRest(t : List[BDD], u : List[BDD], d : List[BDD], c : List[BDD]) : BDD = {
+    (t,u,d,c) match {
+      case (Nil,Nil,Nil,_) => bddGenerator.True
+      case (t_bit :: t_rest, u_bit :: u_rest, d_bit :: d_rest, c_prev :: c_cur :: c_rest) =>
+        val u_bit_def = u_bit.biimp(t_bit.xor(d_bit).xor(c_prev))
+        val c_cur_def = c_cur.biimp(
+          (t_bit.and(d_bit)).or(
+            t_bit.and(c_prev).or(
+              d_bit.and(c_prev)
+            )
+          ))
+        u_bit_def.and(c_cur_def.and(addConstRest(t_rest, u_rest, d_rest, c_cur :: c_rest)))
+      case _ => assert(false,"addConstRest pattern match fails").asInstanceOf[BDD]
+    }
+  }
+
+  /**
+    * Returns true of the first `bit1` is one and the second `bit2` is zero.
+    *
+    * @param bit1 the first bit.
+    * @param bit2 the second bit.
+    * @return the `True` BDD if the first bit is one and the second is zero.
+    */
+
+  def gtBit(bit1 : BDD, bit2 : BDD) : BDD =
+    bit1.and(bit2.not())
+
+  /**
+    * Determines whether one time value `u` is strictly bigger than another `l`.
+    * The time values are presented with the most significant bit first, and the
+    * function recurses over the bits comparing them until the result becomes
+    * obvious.
+    *
+    * E.g. to compare binary `101` (number 5) to binary `110` (number 6) the
+    * function first compares the first two `1`s, which does not determine the
+    * result. It then moves on to the next two bits `0` and `1`, and here it becomes
+    * clear that the first number is not bigger than the second.
+    *
+    * @param u the first time value (the time difference of the current event)
+    * @param l the second time value (the limit constant associated with the S-operator)
+    * @return the result of the comparison, `True` if the first number is bigger than the second.
+    *         Otherwise `False`.
+    */
+
+  def gtConst(u : List[BDD], l : List[BDD]) : BDD = {
+    (u,l) match {
+      case (Nil,Nil) => bddGenerator.False
+      case (u_bit :: u_rest,l_bit :: l_rest) =>
+        gtBit(u_bit,l_bit).ite(
+          bddGenerator.True,
+          gtBit(l_bit,u_bit).ite(
+            bddGenerator.False,
+            gtConst(u_rest,l_rest)
+          )
+        )
+      case _ => assert(false,"gtConst pattern match fails").asInstanceOf[BDD]
+    }
+  }
+
+  /**
+    * From a list of BDD variable-numbers (the JavaBDD package represents a
+    * variable by a number), the function returns a list of the BDDs, one for
+    * each of these variables. The BDD returns `1` for `1` and `0` for `0`.
+    *
+    * @param positions the numbers of the variables.
+    * @return the corresponding one-bit BDDs.
+    */
+
+  def generateBDDList(positions: Array[Int]) : List[BDD] = {
+    for (pos <- positions.toList) yield bddGenerator.theOneBDDFor(pos)
+  }
+
+  /**
+    * Sets the time delta in the individual formula. Note that the delta stored in the
+    * individual formula is a function of the maximal time limit occurring in
+    * the formula, in order to save bits. It is meant to be overridden by each
+    * formula class if the formula contains time constraints.
+    *
+    * @param actualDelta the actual difference in time between the timestamp of
+    *                    the previous event and the current event.
+    */
+
+  def setTime(actualDelta: Int) {}
 
   /**
     * Declares all variables (each identified by a name) in a formula.

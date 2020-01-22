@@ -1,4 +1,6 @@
 
+package sandbox.tracemonitor4
+
 /* Generic Monitoring Code common for all properties. */
 
 import net.sf.javabdd.{BDD, BDDFactory}
@@ -62,6 +64,10 @@ object Util {
 
   def debug(str: => String): Unit = {
     if (Options.DEBUG) println(str)
+  }
+
+  def log2(x: Int):Int = {
+    (scala.math.log(x)/scala.math.log(2.0)).ceil.toInt
   }
 
   def bddToString(bdd: BDD): String = {
@@ -460,21 +466,18 @@ abstract class Monitor {
   var lineNr: Int = 0
   var garbageWasCollected: Boolean = false
   var statistics: TraceStatistics = new TraceStatistics(eventsInSpec)
+
+  // @@@\
+
   var currentTime : Int = 0
   var deltaTime : Int = 0
-
-  /**
-    * Sets the current time to the time indicated by the timestamp associated
-    * with the latest event. It specifically sets `deltaTime` to denote the
-    * difference between the previous time stamp and this one.
-    *
-    * @param timeStamp the new time value for the latest event.
-    */
 
   def setTime(timeStamp : Int): Unit = {
     deltaTime = timeStamp - currentTime
     currentTime = timeStamp
   }
+
+  // @@@/
 
   /**
     * Returns the set of events referred to in the specification, either defined, or referred to
@@ -548,8 +551,6 @@ abstract class Monitor {
     end()
   }
 
-  var timeStamp : Int = 0 // just used for testing // TODO, should not be needed
-
   /**
     * Submits an entire trace stored in CSV (Comma Separated Value format) format
     * to the monitor, as an alternative to submitting events one by one. This method
@@ -557,6 +558,10 @@ abstract class Monitor {
     *
     * @param file the log file in CSV format to be verified.
     */
+
+  // @@@\
+
+  var timeStamp : Int = 0 // just used for testing // TODO, should not be needed
 
   def submitCSVFile(file: String) {
     val in: Reader = new BufferedReader(new FileReader(file))
@@ -587,6 +592,8 @@ abstract class Monitor {
     end()
   }
 
+  // @@@/
+
   /**
     * Called at the end of a trace analysis. Only called in connection of
     * log analysis (analysis of finite traces).
@@ -610,7 +617,9 @@ abstract class Monitor {
   def evaluate(): Unit = {
     debug(s"\n$state\n")
     for (formula <- formulae) {
+      // @@@\
       formula.setTime(deltaTime)
+      // @@@/
       if (!formula.evaluate()) {
         println(s"\n*** Property ${formula.name} violated on event number $lineNr:\n")
         println(state)
@@ -966,18 +975,6 @@ abstract class Formula(val monitor: Monitor) {
   }
 
   /**
-    * Sets the time delta in the individual formula. Note that the delta stored in the
-    * individual formula is a function of the maximal time limit occurring in
-    * the formula, in order to save bits. It is meant to be overridden by each
-    * formula class if the formula contains time constraints.
-    *
-    * @param actualDelta the actual difference in time between the timestamp of
-    *                    the previous event and the current event.
-    */
-
-  def setTime(actualDelta: Int) {}
-
-  /**
     * Declares all variables (each identified by a name) in a formula.
     * This includes initializing the BDD generator, which is stored in
     * <code>bddGenerator</code>, and initializing <code>True</code> and
@@ -986,6 +983,12 @@ abstract class Formula(val monitor: Monitor) {
     * @param variables the (name,bounded) pairs for variables in a formula.
     * @return a list of Variable objects, one for each variable.
     */
+
+  // @@@\
+
+  def setTime(actualDelta: Int) {}
+
+  // @@@/
 
   def declareVariables(variables: (String, Boolean)*): List[Variable] = {
     val variableList = variables.toList
@@ -1111,3 +1114,203 @@ abstract class Formula(val monitor: Monitor) {
     }
   }
 }
+
+
+
+/*
+  prop p : Forall x . r(x) -> ((Exists y . ExistsTime . true S[<=3] p(y)) & (Exists z . ExistsTime . true S[<=4] q(z)))
+*/
+
+class Formula_p(monitor: Monitor) extends Formula(monitor) {
+
+  val var_x :: var_y :: var_z :: Nil = declareVariables(("x",false), ("y",false), ("z",false))
+
+  // Declarations related to timed properties:
+
+  val startTimeVar : Int = 3 * Options.BITS
+  val offsetTimeVar : Int = Options.BITS_PER_TIME_VAR
+
+  val (sBegin,sEnd) = (startTimeVar,startTimeVar + offsetTimeVar - 1)
+  val (uBegin,uEnd) = (sEnd + 1, sEnd + offsetTimeVar)
+  val (dBegin,dEnd) = (uEnd + 1, uEnd + offsetTimeVar)
+  val (cBegin,cEnd) = (dEnd + 1, dEnd + offsetTimeVar)
+  val (lBegin,lEnd) = (cEnd + 1, cEnd + offsetTimeVar)
+
+  val tPosArray = (sBegin to sEnd).toArray
+  val uPosArray = (uBegin to uEnd).toArray
+  val dPosArray = (dBegin to dEnd).toArray
+  val cPosArray = (cBegin to cEnd).toArray
+  val lPosArray = (lBegin to lEnd).toArray
+
+  val tBDDList = generateBDDList(tPosArray)
+  val uBDDList = generateBDDList(uPosArray)
+  val dBDDList = generateBDDList(dPosArray)
+  val cBDDList = generateBDDList(cPosArray)
+  val lBDDList = generateBDDList(lPosArray)
+
+  val uBDDListHighToLow = uBDDList.reverse
+  val lBDDListHighToLow = lBDDList.reverse
+
+  val tPosArrayHighToLow = tPosArray.reverse
+  val dPosArrayHighToLow = dPosArray.reverse
+  val lPosArrayHighToLow = lPosArray.reverse
+
+  val var_t_quantvar : BDD = bddGenerator.getQuantVars(tPosArray)
+  val var_d_quantvar : BDD = bddGenerator.getQuantVars(dPosArray)
+  val var_c_quantvar : BDD = bddGenerator.getQuantVars(cPosArray)
+  val var_l_quantvar : BDD = bddGenerator.getQuantVars(lPosArray)
+
+  val u_to_t_map = bddGenerator.B.makePair()
+  for ((u,t) <- uPosArray.zip(tPosArray)) {
+    u_to_t_map.set(u,t)
+  }
+
+  val zeroTime : BDD = bddGenerator.B.buildCube(0,tPosArrayHighToLow)
+
+  // End of declarations related to timed properties
+
+
+  override def evaluate(): Boolean = {
+    // assignments1 (leaf nodes that are not rule calls):
+    now(2) = build("r")(V("x"))
+    now(8) = build("p")(V("y"))
+    now(13) = build("q")(V("z"))
+    // assignments2 (rule nodes excluding what is below @ and excluding leaf nodes):
+    // assignments3 (rule calls):
+    // assignments4 (the rest of rules that are below @ and excluding leaf nodes):
+    // assignments5 (main formula excluding leaf nodes):
+    now(7) = bddGenerator.True
+    now(6) =
+      (now(8).and(zeroTime)).or(
+        now(7)
+          .and(pre(6))
+          .and(DeltaBDD)
+          .and(limitMap(3))
+          .and(addConst(tBDDList,uBDDList,dBDDList,cBDDList))
+          .and(gtConst(uBDDListHighToLow,lBDDListHighToLow).not())
+          .exist(var_t_quantvar)
+          .exist(var_d_quantvar)
+          .exist(var_c_quantvar)
+          .exist(var_l_quantvar)
+          .replace(u_to_t_map)
+      )
+    now(5) = now(6).exist(var_t_quantvar)
+    now(4) = now(5).exist(var_y.quantvar)
+    now(12) = bddGenerator.True
+    now(11) =
+      (now(13).and(zeroTime)).or(
+        now(12)
+          .and(pre(11))
+          .and(DeltaBDD)
+          .and(limitMap(4))
+          .and(addConst(tBDDList,uBDDList,dBDDList,cBDDList))
+          .and(gtConst(uBDDListHighToLow,lBDDListHighToLow).not())
+          .exist(var_t_quantvar)
+          .exist(var_d_quantvar)
+          .exist(var_c_quantvar)
+          .exist(var_l_quantvar)
+          .replace(u_to_t_map)
+      )
+    now(10) = now(11).exist(var_t_quantvar)
+    now(9) = now(10).exist(var_z.quantvar)
+    now(3) = now(4).and(now(9))
+    now(1) = now(2).not().or(now(3))
+    now(0) = now(1).forAll(var_x.quantvar)
+
+    debugMonitorState()
+
+    val error = now(0).isZero
+    if (error) monitor.recordResult()
+    tmp = now
+    now = pre
+    pre = tmp
+    touchedByLastEvent = emptyTouchedSet
+    !error
+  }
+
+  val limitMap : Map[Int,BDD] =
+    Map(
+      3 -> bddGenerator.B.buildCube(3,lPosArrayHighToLow),
+      4 -> bddGenerator.B.buildCube(4,lPosArrayHighToLow)
+    )
+
+  // @@@\
+
+  val maxLimit = 4 + 1
+  var DeltaBDD : BDD = null
+
+  override def setTime(actualDelta: Int) {
+    val reducedDelta = scala.math.min(actualDelta,maxLimit)
+    DeltaBDD = bddGenerator.B.buildCube(reducedDelta,dPosArrayHighToLow)
+  }
+
+  // @@@/
+
+  varsInRelations = Set()
+  val indices: List[Int] = List(11,6)
+
+  pre = Array.fill(14)(bddGenerator.False)
+  now = Array.fill(14)(bddGenerator.False)
+
+  txt = Array(
+    "Forall x . r(x) -> ((Exists y . ExistsTime . true S[<=3] p(y)) & (Exists z . ExistsTime . true S[<=4] q(z)))",
+    "r(x) -> ((Exists y . ExistsTime . true S[<=3] p(y)) & (Exists z . ExistsTime . true S[<=4] q(z)))",
+    "r(x)",
+    "(Exists y . ExistsTime . true S[<=3] p(y)) & (Exists z . ExistsTime . true S[<=4] q(z))",
+    "Exists y . ExistsTime . true S[<=3] p(y)",
+    "ExistsTime . true S[<=3] p(y)",
+    "true S[<=3] p(y)",
+    "true",
+    "p(y)",
+    "Exists z . ExistsTime . true S[<=4] q(z)",
+    "ExistsTime . true S[<=4] q(z)",
+    "true S[<=4] q(z)",
+    "true",
+    "q(z)"
+  )
+
+  debugMonitorState()
+}
+
+
+
+/* The specialized Monitor for the provided properties. */
+
+class PropertyMonitor extends Monitor {
+  def eventsInSpec: Set[String] = Set("r","p","q")
+
+  formulae ++= List(new Formula_p(this))
+}
+
+
+
+object TraceMonitor {
+  def main(args: Array[String]): Unit = {
+    if (1 <= args.length && args.length <= 3) {
+      if (args.length > 1) Options.BITS = args(1).toInt
+      val m = new PropertyMonitor
+      val file = args(0)
+      if (args.length == 3 && args(2) == "debug") Options.DEBUG = true
+      if (args.length == 3 && args(2) == "profile") Options.PROFILE = true
+      try {
+        openResultFile("dejavu-results")
+        if (Options.PROFILE) {
+          openProfileFile("dejavu-profile.csv")
+          m.printProfileHeader()
+        }
+        m.submitCSVFile(file)
+      } catch {
+        case e: Throwable =>
+          println(s"\n*** $e\n")
+        // e.printStackTrace()
+      } finally {
+        closeResultFile()
+        if (Options.PROFILE) closeProfileFile()
+      }
+    } else {
+      println("*** call with these arguments:")
+      println("<logfile> [<bits> [debug|profile]]")
+    }
+  }
+}
+
