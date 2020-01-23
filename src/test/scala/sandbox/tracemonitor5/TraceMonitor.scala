@@ -16,7 +16,7 @@ object Options {
   var PROFILE: Boolean = false
   var PRINT: Boolean = false
   var BITS: Int = 20
-  var BITS_PER_TIME_VAR : Int = 3 // TODO: should be calculated from spec!
+  // var BITS_PER_TIME_VAR : Int = 3 // TODO: should be calculated from spec!
   var PRINT_LINENUMBER_EACH: Int = 1000
   var UNIT_TEST: Boolean = false
   var STATISTICS: Boolean = true
@@ -306,7 +306,7 @@ class Variable(F: Formula)(name: String, bounded: Boolean, offset: Int, nrOfBits
   *                  name, whether it is bounded (true = yes), and number of bits representing it.
   */
 
-class BDDGenerator(F: Formula)(variables: List[(String, Boolean, Int)]) {
+class BDDGenerator(F: Formula)(variables: List[(String, Boolean, Int)], bitsPerTimeVar: Int) { // TODO
   var B: BDDFactory = BDDFactory.init(10000, 10000)
   val True: BDD = B.one()
   val False: BDD = B.zero()
@@ -326,8 +326,8 @@ class BDDGenerator(F: Formula)(variables: List[(String, Boolean, Int)]) {
 
   val nrOfTimeVariables = 5
 
-  if (totalNumberOfBits > 0) {
-    B.setVarNum(totalNumberOfBits + (nrOfTimeVariables * Options.BITS_PER_TIME_VAR))
+  if (totalNumberOfBits > 0 || bitsPerTimeVar > 0) { // TODO
+    B.setVarNum(totalNumberOfBits + (nrOfTimeVariables * bitsPerTimeVar)) // TODO
   }
 
   /**
@@ -989,13 +989,13 @@ abstract class Formula(val monitor: Monitor) {
     * @return a list of Variable objects, one for each variable.
     */
 
-  def declareVariables(variables: (String, Boolean)*): List[Variable] = {
+  def declareVariables(variables: (String, Boolean)*)(bitsPerTimeVar: Int): List[Variable] = { // TODO
     val variableList = variables.toList
     val nameList: List[String] = variableList.map(_._1)
     val varsAndBitsPerVar = variableList.map {
       case (n, b) => (n, b, Options.BITS)
     }
-    bddGenerator = new BDDGenerator(this)(varsAndBitsPerVar)
+    bddGenerator = new BDDGenerator(this)(varsAndBitsPerVar, bitsPerTimeVar) // TODO
     bddGenerator.initializeVariables()
     nameList.map(bddGenerator.varMap(_))
   }
@@ -1117,16 +1117,16 @@ abstract class Formula(val monitor: Monitor) {
 
 
 /*
-  prop p : Forall x . P a(x)
+  prop p : ([CMD_DISPATCH(''MOB_NAV_PRM_SET'',''4''),CMD_COMPLETE(''MOB_NAV_PRM_SET'',''4'')) | [CMD_DISPATCH(''ARM_PRM_SETDMP'',''4''),CMD_COMPLETE(''ARM_PRM_SETDMP'',''4''))) -> !TLM_TR_ERROR
 */
 
 class Formula_p(monitor: Monitor) extends Formula(monitor) {
 
-  val var_x :: Nil = declareVariables(("x",false))
+  declareVariables()(0) // TODO
 
   // Declarations related to timed properties:
-
-  val startTimeVar : Int = 1 * Options.BITS
+/* TODO
+  val startTimeVar : Int = 0 * Options.BITS
   val offsetTimeVar : Int = Options.BITS_PER_TIME_VAR
 
   val (sBegin,sEnd) = (startTimeVar,startTimeVar + offsetTimeVar - 1)
@@ -1134,6 +1134,14 @@ class Formula_p(monitor: Monitor) extends Formula(monitor) {
   val (dBegin,dEnd) = (uEnd + 1, uEnd + offsetTimeVar)
   val (cBegin,cEnd) = (dEnd + 1, dEnd + offsetTimeVar)
   val (lBegin,lEnd) = (cEnd + 1, cEnd + offsetTimeVar)
+
+  println("========")
+  println((sBegin,sEnd))
+  println((uBegin,uEnd))
+  println((dBegin,dEnd))
+  println((cBegin,cEnd))
+  println((lBegin,lEnd))
+  println("========")
 
   val tPosArray = (sBegin to sEnd).toArray
   val uPosArray = (uBegin to uEnd).toArray
@@ -1165,19 +1173,39 @@ class Formula_p(monitor: Monitor) extends Formula(monitor) {
   }
 
   val zeroTime : BDD = bddGenerator.B.buildCube(0,tPosArrayHighToLow)
-
+*/
   // End of declarations related to timed properties
 
+  /* TODO
+  val limitMap : Map[Int,BDD] =
+    Map(
+
+    )
+
+  val maxTimeLimit = 0 + 1
+  var DeltaBDD : BDD = null
+
+  override def setTime(actualDelta: Int) {
+
+  }
+   */
 
   override def evaluate(): Boolean = {
     // assignments1 (leaf nodes that are not rule calls):
-    now(2) = build("a")(V("x"))
+    now(3) = build("CMD_DISPATCH")(C("MOB_NAV_PRM_SET"),C("4"))
+    now(4) = build("CMD_COMPLETE")(C("MOB_NAV_PRM_SET"),C("4"))
+    now(6) = build("CMD_DISPATCH")(C("ARM_PRM_SETDMP"),C("4"))
+    now(7) = build("CMD_COMPLETE")(C("ARM_PRM_SETDMP"),C("4"))
+    now(9) = build("TLM_TR_ERROR")()
     // assignments2 (rule nodes excluding what is below @ and excluding leaf nodes):
     // assignments3 (rule calls):
     // assignments4 (the rest of rules that are below @ and excluding leaf nodes):
     // assignments5 (main formula excluding leaf nodes):
-    now(1) = now(2).or(pre(1))
-    now(0) = now(1).forAll(var_x.quantvar)
+    now(2) = now(3).or(now(4).not().and(pre(2)))
+    now(5) = now(6).or(now(7).not().and(pre(5)))
+    now(1) = now(2).or(now(5))
+    now(8) = now(9).not()
+    now(0) = now(1).not().or(now(8))
 
     debugMonitorState()
 
@@ -1190,28 +1218,23 @@ class Formula_p(monitor: Monitor) extends Formula(monitor) {
     !error
   }
 
-  val limitMap : Map[Int,BDD] =
-    Map(
-
-    )
-
-  val maxTimeLimit = 0 + 1
-  var DeltaBDD : BDD = null
-
-  override def setTime(actualDelta: Int) {
-
-  }
-
   varsInRelations = Set()
-  val indices: List[Int] = List(1)
+  val indices: List[Int] = List(5,2)
 
-  pre = Array.fill(3)(bddGenerator.False)
-  now = Array.fill(3)(bddGenerator.False)
+  pre = Array.fill(10)(bddGenerator.False)
+  now = Array.fill(10)(bddGenerator.False)
 
   txt = Array(
-    "Forall x . P a(x)",
-    "P a(x)",
-    "a(x)"
+    "([CMD_DISPATCH(''MOB_NAV_PRM_SET'',''4''),CMD_COMPLETE(''MOB_NAV_PRM_SET'',''4'')) | [CMD_DISPATCH(''ARM_PRM_SETDMP'',''4''),CMD_COMPLETE(''ARM_PRM_SETDMP'',''4''))) -> !TLM_TR_ERROR",
+    "[CMD_DISPATCH(''MOB_NAV_PRM_SET'',''4''),CMD_COMPLETE(''MOB_NAV_PRM_SET'',''4'')) | [CMD_DISPATCH(''ARM_PRM_SETDMP'',''4''),CMD_COMPLETE(''ARM_PRM_SETDMP'',''4''))",
+    "[CMD_DISPATCH(''MOB_NAV_PRM_SET'',''4''),CMD_COMPLETE(''MOB_NAV_PRM_SET'',''4''))",
+    "CMD_DISPATCH(''MOB_NAV_PRM_SET'',''4'')",
+    "CMD_COMPLETE(''MOB_NAV_PRM_SET'',''4'')",
+    "[CMD_DISPATCH(''ARM_PRM_SETDMP'',''4''),CMD_COMPLETE(''ARM_PRM_SETDMP'',''4''))",
+    "CMD_DISPATCH(''ARM_PRM_SETDMP'',''4'')",
+    "CMD_COMPLETE(''ARM_PRM_SETDMP'',''4'')",
+    "!TLM_TR_ERROR",
+    "TLM_TR_ERROR"
   )
 
   debugMonitorState()
@@ -1222,7 +1245,7 @@ class Formula_p(monitor: Monitor) extends Formula(monitor) {
 /* The specialized Monitor for the provided properties. */
 
 class PropertyMonitor extends Monitor {
-  def eventsInSpec: Set[String] = Set("a")
+  def eventsInSpec: Set[String] = Set("CMD_DISPATCH","CMD_COMPLETE","TLM_TR_ERROR")
 
   formulae ++= List(new Formula_p(this))
 }
