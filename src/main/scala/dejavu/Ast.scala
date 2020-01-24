@@ -1,3 +1,4 @@
+
 package dejavu
 
 import java.io._
@@ -85,7 +86,7 @@ object AstUtil {
     val monitorFreshFileIn = dejavuDir + "Monitor.scala"
     if (new java.io.File(monitorFreshFileIn).exists) { // true in development environment
       val monitorFreshText = Source.fromFile(monitorFreshFileIn).getLines.drop(1).mkString("\n") // drop package name
-    val monitorFreshFileOut = dejavuDir + "Monitor.txt"
+      val monitorFreshFileOut = dejavuDir + "Monitor.txt"
       openFile(monitorFreshFileOut)
       writeln(monitorFreshText)
       closeFile()
@@ -131,7 +132,6 @@ case class Spec(properties: List[Property]) {
     writeln()
     for (property <- properties) {
       val name = property.name
-      val variables = property.getQuantifiedVariables
       writeln(
         s"""
            |/*
@@ -142,77 +142,9 @@ case class Spec(properties: List[Property]) {
           """
           .stripMargin)
 
-      if (variables == Nil) {
-        writeln(s"  declareVariables()")
-      } else {
-        val lhs = variables.map { case (n, b) => s"var_$n" }.mkString(" :: ") + " :: Nil"
-        val rhs = variables.map { case (n, b) => (quote(n), b) }.mkString(", ")
-        writeln(s"  val $lhs = declareVariables($rhs)")
-      }
-
-      writeln(
-        s"""
-           | // Declarations related to timed properties:
-           |
-           |  val startTimeVar : Int = ${variables.length} * Options.BITS
-           |  val offsetTimeVar : Int = Options.BITS_PER_TIME_VAR
-           |
-           |  val (sBegin,sEnd) = (startTimeVar,startTimeVar + offsetTimeVar - 1)
-           |  val (uBegin,uEnd) = (sEnd + 1, sEnd + offsetTimeVar)
-           |  val (dBegin,dEnd) = (uEnd + 1, uEnd + offsetTimeVar)
-           |  val (cBegin,cEnd) = (dEnd + 1, dEnd + offsetTimeVar)
-           |  val (lBegin,lEnd) = (cEnd + 1, cEnd + offsetTimeVar)
-           |
-           |  val tPosArray = (sBegin to sEnd).toArray
-           |  val uPosArray = (uBegin to uEnd).toArray
-           |  val dPosArray = (dBegin to dEnd).toArray
-           |  val cPosArray = (cBegin to cEnd).toArray
-           |  val lPosArray = (lBegin to lEnd).toArray
-           |
-           |  val tBDDList = generateBDDList(tPosArray)
-           |  val uBDDList = generateBDDList(uPosArray)
-           |  val dBDDList = generateBDDList(dPosArray)
-           |  val cBDDList = generateBDDList(cPosArray)
-           |  val lBDDList = generateBDDList(lPosArray)
-           |
-           |  val uBDDListHighToLow = uBDDList.reverse
-           |  val lBDDListHighToLow = lBDDList.reverse
-           |
-           |  val tPosArrayHighToLow = tPosArray.reverse
-           |  val dPosArrayHighToLow = dPosArray.reverse
-           |  val lPosArrayHighToLow = lPosArray.reverse
-           |
-           |  val var_t_quantvar : BDD = bddGenerator.getQuantVars(tPosArray)
-           |  val var_d_quantvar : BDD = bddGenerator.getQuantVars(dPosArray)
-           |  val var_c_quantvar : BDD = bddGenerator.getQuantVars(cPosArray)
-           |  val var_l_quantvar : BDD = bddGenerator.getQuantVars(lPosArray)
-           |
-           |  val u_to_t_map = bddGenerator.B.makePair()
-           |  for ((u,t) <- uPosArray.zip(tPosArray)) {
-           |    u_to_t_map.set(u,t)
-           |  }
-           |
-           |  val zeroTime : BDD = bddGenerator.B.buildCube(0,tPosArrayHighToLow)
-           |
-           |  // End of declarations related to timed properties
-           |""".stripMargin)
-
-      writeln()
-
       writeln("  override def evaluate(): Boolean = {")
+
       LTL.translate(property)
-      val size = LTL.next
-      val subFormulas: String = LTL.subExpressions.map(e => quote(e.toString)).mkString(",\n      ")
-      val indices: String = LTL.indicesOfPastTimeFormulas.mkString(",")
-
-      val timeLimits = LTL.timeLimits.toList.map { case limit =>
-        s"$limit -> bddGenerator.B.buildCube($limit,lPosArrayHighToLow)"
-      }
-
-      val maxTimeLimit = if (LTL.timeLimits.isEmpty) 0 else LTL.timeLimits.max
-      val setTimeBody = if (LTL.timeLimits.isEmpty) "" else
-        """val reducedDelta = scala.math.min(actualDelta,maxTimeLimit)
-          |DeltaBDD = bddGenerator.B.buildCube(reducedDelta,dPosArrayHighToLow)""".stripMargin
 
       writeln(
         s"""
@@ -225,20 +157,100 @@ case class Spec(properties: List[Property]) {
            |    pre = tmp
            |    touchedByLastEvent = emptyTouchedSet
            |    !error
-           |  }
-           |
-           |  val limitMap : Map[Int,BDD] =
-           |  Map(
-           |    ${timeLimits.mkString("    ",",\n    ","")}
-           |  )
-           |
-           |  val maxTimeLimit = $maxTimeLimit + 1
-           |  var DeltaBDD : BDD = null
-           |
-           |  override def setTime(actualDelta: Int) {
-           |    $setTimeBody
-           |  }
-           |
+           |  }""".stripMargin)
+
+      writeln()
+
+      val bitsPerTimeVar : Int = if (LTL.timeLimits.isEmpty) 0 else {
+        val maxTimeLimit = LTL.timeLimits.max
+        val maxTimeValue = 2 * maxTimeLimit + 1
+        log2(maxTimeValue)
+      }
+
+      val variables = property.getQuantifiedVariables
+      if (variables == Nil) {
+        writeln(s"  declareVariables()($bitsPerTimeVar)")
+      } else {
+        val lhs = variables.map { case (n, b) => s"var_$n" }.mkString(" :: ") + " :: Nil"
+        val rhs = variables.map { case (n, b) => (quote(n), b) }.mkString(", ")
+        writeln(s"  val $lhs = declareVariables($rhs)($bitsPerTimeVar)")
+      }
+
+      if (!LTL.timeLimits.isEmpty) {
+
+        writeln()
+        writeln("// Declarations related to timed properties:")
+        writeln(
+          s"""
+             |  val startTimeVar : Int = ${variables.length} * Options.BITS
+             |  val offsetTimeVar : Int = $bitsPerTimeVar
+             |
+             |  val (sBegin,sEnd) = (startTimeVar,startTimeVar + offsetTimeVar - 1)
+             |  val (uBegin,uEnd) = (sEnd + 1, sEnd + offsetTimeVar)
+             |  val (dBegin,dEnd) = (uEnd + 1, uEnd + offsetTimeVar)
+             |  val (cBegin,cEnd) = (dEnd + 1, dEnd + offsetTimeVar)
+             |  val (lBegin,lEnd) = (cEnd + 1, cEnd + offsetTimeVar)
+             |
+             |  val tPosArray = (sBegin to sEnd).toArray
+             |  val uPosArray = (uBegin to uEnd).toArray
+             |  val dPosArray = (dBegin to dEnd).toArray
+             |  val cPosArray = (cBegin to cEnd).toArray
+             |  val lPosArray = (lBegin to lEnd).toArray
+             |
+             |  val tBDDList = generateBDDList(tPosArray)
+             |  val uBDDList = generateBDDList(uPosArray)
+             |  val dBDDList = generateBDDList(dPosArray)
+             |  val cBDDList = generateBDDList(cPosArray)
+             |  val lBDDList = generateBDDList(lPosArray)
+             |
+             |  val uBDDListHighToLow = uBDDList.reverse
+             |  val lBDDListHighToLow = lBDDList.reverse
+             |
+             |  val tPosArrayHighToLow = tPosArray.reverse
+             |  val dPosArrayHighToLow = dPosArray.reverse
+             |  val lPosArrayHighToLow = lPosArray.reverse
+             |
+             |  val var_t_quantvar : BDD = bddGenerator.getQuantVars(tPosArray)
+             |  val var_d_quantvar : BDD = bddGenerator.getQuantVars(dPosArray)
+             |  val var_c_quantvar : BDD = bddGenerator.getQuantVars(cPosArray)
+             |  val var_l_quantvar : BDD = bddGenerator.getQuantVars(lPosArray)
+             |
+             |  val u_to_t_map = bddGenerator.B.makePair()
+             |  for ((u,t) <- uPosArray.zip(tPosArray)) {
+             |    u_to_t_map.set(u,t)
+             |  }
+             |
+             |  val zeroTime : BDD = bddGenerator.B.buildCube(0,tPosArrayHighToLow)
+             |""".stripMargin)
+
+        val timeLimits = LTL.timeLimits.toList.map { case limit =>
+          s"$limit -> bddGenerator.B.buildCube($limit,lPosArrayHighToLow)"
+        }
+        val maxTimeLimit = LTL.timeLimits.max
+
+        writeln(
+          s"""  val limitMap : Map[Int,BDD] =
+             |    Map(
+             |      ${timeLimits.mkString("    ",",\n    ","")}
+             |    )
+             |
+             |  val maxTimeLimit = $maxTimeLimit + 1
+             |  var DeltaBDD : BDD = null
+             |
+             |  override def setTime(actualDelta: Int) {
+             |    val reducedDelta = scala.math.min(actualDelta,maxTimeLimit)
+             |    DeltaBDD = bddGenerator.B.buildCube(reducedDelta,dPosArrayHighToLow)
+             |  }""".stripMargin)
+
+        writeln()
+        writeln("// End of declarations related to timed properties")
+      }
+
+      val size = LTL.next
+      val subFormulas: String = LTL.subExpressions.map(e => quote(e.toString)).mkString(",\n      ")
+      val indices: String = LTL.indicesOfPastTimeFormulas.mkString(",")
+
+      writeln(s"""
            |  varsInRelations = Set(${LTL.varsInRelations.map(quote).mkString(",")})
            |  val indices: List[Int] = List($indices)
            |
@@ -254,12 +266,10 @@ case class Spec(properties: List[Property]) {
         """.stripMargin)
     }
 
-    writeln()
     val constructors = properties.map(_.name).map(nm => s"new Formula_$nm(this)").mkString(",")
     val eventsInSpec = SymbolTable.referredEvents.map(quote(_)).mkString(",")
     writeln(
-      s"""
-         |/* The specialized Monitor for the provided properties. */
+      s"""/* The specialized Monitor for the provided properties. */
          |
          |class PropertyMonitor extends Monitor {
          |  def eventsInSpec: Set[String] = Set(${eventsInSpec})
@@ -268,10 +278,8 @@ case class Spec(properties: List[Property]) {
          |}
       """.stripMargin)
 
-    writeln()
     writeln(
-      """
-        |object TraceMonitor {
+      """object TraceMonitor {
         |  def main(args: Array[String]): Unit = {
         |    if (1 <= args.length && args.length <= 3) {
         |      if (args.length > 1) Options.BITS = args(1).toInt
@@ -715,8 +723,8 @@ case class Rule(name: String, args: List[String], ltl: LTL) extends Definition {
 trait LTL {
 
   /**
-    * Index of formula, used to index in <code>now</code> and <code>pre</code> arrays.
-    */
+  * Index of formula, used to index in <code>now</code> and <code>pre</code> arrays.
+  */
 
   var index: Int = 0
 
@@ -805,19 +813,19 @@ trait LTL {
   def getPredicates: Set[String] = Set()
 
   /**
-    * Expands calls of macros.
-    *
-    * @param macros the macros defined in the specification document.
-    * @return the LTL formula where macros have been expanded.
-    */
-
-  /**
     * Returns the predicates referred to in a LTL formula.
     *
     * @return predicates referred to in the LTL formula.
     */
 
   def getPredicateTerms: Set[Pred] = Set()
+
+  /**
+    * Expands calls of macros.
+    *
+    * @param macros the macros defined in the specification document.
+    * @return the LTL formula where macros have been expanded.
+    */
 
   def expandMacros(macros: MacroMap): LTL = this
 

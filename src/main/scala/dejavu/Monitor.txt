@@ -14,7 +14,6 @@ object Options {
   var PROFILE: Boolean = false
   var PRINT: Boolean = false
   var BITS: Int = 20
-  var BITS_PER_TIME_VAR : Int = 3 // TODO: should be calculated from spec!
   var PRINT_LINENUMBER_EACH: Int = 1000
   var UNIT_TEST: Boolean = false
   var STATISTICS: Boolean = true
@@ -295,16 +294,22 @@ class Variable(F: Formula)(name: String, bounded: Boolean, offset: Int, nrOfBits
 }
 
 /**
-  * An object of this class represents all the variables in a formula.
+  * An object of this class represents all the variables in a formula,
+  * including variables containing time values if timed temporal properties
+  * occur in the property.
+  *
   * It contains a mapping from variable names (strings) to objects of
   * class <code>Variable</code>, each of which contains the hashmap
   * from values of the corresponding variable to BDDs.
   *
   * @param variables the variables in the formula, each indicated by
   *                  name, whether it is bounded (true = yes), and number of bits representing it.
+  * @param bitsPerTimeVar the number of bits to be allocated per time variable.
+  *                  This number is `0` if the property does not contain
+  *                  timed temporal operators.
   */
 
-class BDDGenerator(F: Formula)(variables: List[(String, Boolean, Int)]) {
+class BDDGenerator(F: Formula)(variables: List[(String, Boolean, Int)], bitsPerTimeVar: Int) {
   var B: BDDFactory = BDDFactory.init(10000, 10000)
   val True: BDD = B.one()
   val False: BDD = B.zero()
@@ -324,8 +329,8 @@ class BDDGenerator(F: Formula)(variables: List[(String, Boolean, Int)]) {
 
   val nrOfTimeVariables = 5
 
-  if (totalNumberOfBits > 0) {
-    B.setVarNum(totalNumberOfBits + (nrOfTimeVariables * Options.BITS_PER_TIME_VAR))
+  if (totalNumberOfBits > 0 || bitsPerTimeVar > 0) {
+    B.setVarNum(totalNumberOfBits + (nrOfTimeVariables * bitsPerTimeVar))
   }
 
   /**
@@ -548,8 +553,6 @@ abstract class Monitor {
     end()
   }
 
-  var timeStamp : Int = 0 // just used for testing // TODO, should not be needed
-
   /**
     * Submits an entire trace stored in CSV (Comma Separated Value format) format
     * to the monitor, as an alternative to submitting events one by one. This method
@@ -561,6 +564,8 @@ abstract class Monitor {
   def submitCSVFile(file: String) {
     val in: Reader = new BufferedReader(new FileReader(file))
     // DEFAULT.withHeader()
+    val timed : Boolean = file.contains(".timed.")
+    var eventSize : Int = 0
     val records: Iterable[CSVRecord] = CSVFormat.DEFAULT.parse(in).asScala
     lineNr = 0
     for (record <- records) {
@@ -575,11 +580,16 @@ abstract class Monitor {
       }
       val name = record.get(0)
       var args = new ListBuffer[Any]()
-      for (i <- 1 until record.size()) {
+      if (timed) {
+        eventSize = record.size() - 1
+        val timeStamp : Int = record.get(eventSize).toInt
+        setTime(timeStamp)
+      } else {
+        eventSize = record.size()
+      }
+      for (i <- 1 until eventSize) {
         args += record.get(i)
       }
-      timeStamp += 1 // TODO: replace with real time stamp
-      setTime(timeStamp) // TODO: added, change to correct time
       submit(name, args.toList)
     }
     println(s"Processed $lineNr events")
@@ -608,7 +618,7 @@ abstract class Monitor {
     */
 
   def evaluate(): Unit = {
-    debug(s"\n$state\n")
+    debug(s"\ncurrentTime = $currentTime\n$state\n")
     for (formula <- formulae) {
       formula.setTime(deltaTime)
       if (!formula.evaluate()) {
@@ -982,18 +992,23 @@ abstract class Formula(val monitor: Monitor) {
     * This includes initializing the BDD generator, which is stored in
     * <code>bddGenerator</code>, and initializing <code>True</code> and
     * <code>False</code>. The result returned is a list of the Variable objects.
+    * In addition BDD variables are allocated for keeping track of time in case
+    * the property contains timed temporal operators. In this case `bitsPerTimeVar > 0`.
     *
     * @param variables the (name,bounded) pairs for variables in a formula.
+    * @param bitsPerTimeVar the number of bits to be allocated per time variable.
+    *                       This number is `0` if the property does not contain
+    *                       timed temporal operators.
     * @return a list of Variable objects, one for each variable.
     */
 
-  def declareVariables(variables: (String, Boolean)*): List[Variable] = {
+  def declareVariables(variables: (String, Boolean)*)(bitsPerTimeVar: Int): List[Variable] = {
     val variableList = variables.toList
     val nameList: List[String] = variableList.map(_._1)
     val varsAndBitsPerVar = variableList.map {
       case (n, b) => (n, b, Options.BITS)
     }
-    bddGenerator = new BDDGenerator(this)(varsAndBitsPerVar)
+    bddGenerator = new BDDGenerator(this)(varsAndBitsPerVar, bitsPerTimeVar)
     bddGenerator.initializeVariables()
     nameList.map(bddGenerator.varMap(_))
   }

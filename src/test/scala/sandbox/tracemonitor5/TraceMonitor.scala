@@ -1,4 +1,3 @@
-
 package sandbox.tracemonitor5
 
 /* Generic Monitoring Code common for all properties. */
@@ -16,7 +15,6 @@ object Options {
   var PROFILE: Boolean = false
   var PRINT: Boolean = false
   var BITS: Int = 20
-  // var BITS_PER_TIME_VAR : Int = 3 // TODO: should be calculated from spec!
   var PRINT_LINENUMBER_EACH: Int = 1000
   var UNIT_TEST: Boolean = false
   var STATISTICS: Boolean = true
@@ -297,16 +295,22 @@ class Variable(F: Formula)(name: String, bounded: Boolean, offset: Int, nrOfBits
 }
 
 /**
-  * An object of this class represents all the variables in a formula.
+  * An object of this class represents all the variables in a formula,
+  * including variables containing time values if timed temporal properties
+  * occur in the property.
+  *
   * It contains a mapping from variable names (strings) to objects of
   * class <code>Variable</code>, each of which contains the hashmap
   * from values of the corresponding variable to BDDs.
   *
   * @param variables the variables in the formula, each indicated by
   *                  name, whether it is bounded (true = yes), and number of bits representing it.
+  * @param bitsPerTimeVar the number of bits to be allocated per time variable.
+  *                  This number is `0` if the property does not contain
+  *                  timed temporal operators.
   */
 
-class BDDGenerator(F: Formula)(variables: List[(String, Boolean, Int)], bitsPerTimeVar: Int) { // TODO
+class BDDGenerator(F: Formula)(variables: List[(String, Boolean, Int)], bitsPerTimeVar: Int) {
   var B: BDDFactory = BDDFactory.init(10000, 10000)
   val True: BDD = B.one()
   val False: BDD = B.zero()
@@ -326,8 +330,8 @@ class BDDGenerator(F: Formula)(variables: List[(String, Boolean, Int)], bitsPerT
 
   val nrOfTimeVariables = 5
 
-  if (totalNumberOfBits > 0 || bitsPerTimeVar > 0) { // TODO
-    B.setVarNum(totalNumberOfBits + (nrOfTimeVariables * bitsPerTimeVar)) // TODO
+  if (totalNumberOfBits > 0 || bitsPerTimeVar > 0) {
+    B.setVarNum(totalNumberOfBits + (nrOfTimeVariables * bitsPerTimeVar))
   }
 
   /**
@@ -550,8 +554,6 @@ abstract class Monitor {
     end()
   }
 
-  var timeStamp : Int = 0 // just used for testing // TODO, should not be needed
-
   /**
     * Submits an entire trace stored in CSV (Comma Separated Value format) format
     * to the monitor, as an alternative to submitting events one by one. This method
@@ -563,6 +565,8 @@ abstract class Monitor {
   def submitCSVFile(file: String) {
     val in: Reader = new BufferedReader(new FileReader(file))
     // DEFAULT.withHeader()
+    val timed : Boolean = file.contains(".timed.")
+    var eventSize : Int = 0
     val records: Iterable[CSVRecord] = CSVFormat.DEFAULT.parse(in).asScala
     lineNr = 0
     for (record <- records) {
@@ -577,11 +581,16 @@ abstract class Monitor {
       }
       val name = record.get(0)
       var args = new ListBuffer[Any]()
-      for (i <- 1 until record.size()) {
+      if (timed) {
+        eventSize = record.size() - 1
+        val timeStamp : Int = record.get(eventSize).toInt
+        setTime(timeStamp)
+      } else {
+        eventSize = record.size()
+      }
+      for (i <- 1 until eventSize) {
         args += record.get(i)
       }
-      timeStamp += 1 // TODO: replace with real time stamp
-      setTime(timeStamp) // TODO: added, change to correct time
       submit(name, args.toList)
     }
     println(s"Processed $lineNr events")
@@ -610,7 +619,7 @@ abstract class Monitor {
     */
 
   def evaluate(): Unit = {
-    debug(s"\n$state\n")
+    debug(s"\ncurrentTime = $currentTime\n$state\n")
     for (formula <- formulae) {
       formula.setTime(deltaTime)
       if (!formula.evaluate()) {
@@ -984,18 +993,23 @@ abstract class Formula(val monitor: Monitor) {
     * This includes initializing the BDD generator, which is stored in
     * <code>bddGenerator</code>, and initializing <code>True</code> and
     * <code>False</code>. The result returned is a list of the Variable objects.
+    * In addition BDD variables are allocated for keeping track of time in case
+    * the property contains timed temporal operators. In this case `bitsPerTimeVar > 0`.
     *
     * @param variables the (name,bounded) pairs for variables in a formula.
+    * @param bitsPerTimeVar the number of bits to be allocated per time variable.
+    *                       This number is `0` if the property does not contain
+    *                       timed temporal operators.
     * @return a list of Variable objects, one for each variable.
     */
 
-  def declareVariables(variables: (String, Boolean)*)(bitsPerTimeVar: Int): List[Variable] = { // TODO
+  def declareVariables(variables: (String, Boolean)*)(bitsPerTimeVar: Int): List[Variable] = {
     val variableList = variables.toList
     val nameList: List[String] = variableList.map(_._1)
     val varsAndBitsPerVar = variableList.map {
       case (n, b) => (n, b, Options.BITS)
     }
-    bddGenerator = new BDDGenerator(this)(varsAndBitsPerVar, bitsPerTimeVar) // TODO
+    bddGenerator = new BDDGenerator(this)(varsAndBitsPerVar, bitsPerTimeVar)
     bddGenerator.initializeVariables()
     nameList.map(bddGenerator.varMap(_))
   }
@@ -1117,31 +1131,81 @@ abstract class Formula(val monitor: Monitor) {
 
 
 /*
-  prop p : ([CMD_DISPATCH(''MOB_NAV_PRM_SET'',''4''),CMD_COMPLETE(''MOB_NAV_PRM_SET'',''4'')) | [CMD_DISPATCH(''ARM_PRM_SETDMP'',''4''),CMD_COMPLETE(''ARM_PRM_SETDMP'',''4''))) -> !TLM_TR_ERROR
+  prop p : Forall x . r(x) -> ((Exists y . ExistsTime . true S[<=3] p(y)) & (Exists z . ExistsTime . true S[<=4] q(z)))
 */
 
 class Formula_p(monitor: Monitor) extends Formula(monitor) {
 
-  declareVariables()(0) // TODO
+  override def evaluate(): Boolean = {
+    // assignments1 (leaf nodes that are not rule calls):
+    now(2) = build("r")(V("x"))
+    now(8) = build("p")(V("y"))
+    now(13) = build("q")(V("z"))
+    // assignments2 (rule nodes excluding what is below @ and excluding leaf nodes):
+    // assignments3 (rule calls):
+    // assignments4 (the rest of rules that are below @ and excluding leaf nodes):
+    // assignments5 (main formula excluding leaf nodes):
+    now(7) = bddGenerator.True
+    now(6) =
+      (now(8).and(zeroTime)).or(
+        now(7)
+          .and(pre(6))
+          .and(DeltaBDD)
+          .and(limitMap(3))
+          .and(addConst(tBDDList,uBDDList,dBDDList,cBDDList))
+          .and(gtConst(uBDDListHighToLow,lBDDListHighToLow).not())
+          .exist(var_t_quantvar)
+          .exist(var_d_quantvar)
+          .exist(var_c_quantvar)
+          .exist(var_l_quantvar)
+          .replace(u_to_t_map)
+      )
+    now(5) = now(6).exist(var_t_quantvar)
+    now(4) = now(5).exist(var_y.quantvar)
+    now(12) = bddGenerator.True
+    now(11) =
+      (now(13).and(zeroTime)).or(
+        now(12)
+          .and(pre(11))
+          .and(DeltaBDD)
+          .and(limitMap(4))
+          .and(addConst(tBDDList,uBDDList,dBDDList,cBDDList))
+          .and(gtConst(uBDDListHighToLow,lBDDListHighToLow).not())
+          .exist(var_t_quantvar)
+          .exist(var_d_quantvar)
+          .exist(var_c_quantvar)
+          .exist(var_l_quantvar)
+          .replace(u_to_t_map)
+      )
+    now(10) = now(11).exist(var_t_quantvar)
+    now(9) = now(10).exist(var_z.quantvar)
+    now(3) = now(4).and(now(9))
+    now(1) = now(2).not().or(now(3))
+    now(0) = now(1).forAll(var_x.quantvar)
+
+    debugMonitorState()
+
+    val error = now(0).isZero
+    if (error) monitor.recordResult()
+    tmp = now
+    now = pre
+    pre = tmp
+    touchedByLastEvent = emptyTouchedSet
+    !error
+  }
+
+  val var_x :: var_y :: var_z :: Nil = declareVariables(("x",false), ("y",false), ("z",false))(4)
 
   // Declarations related to timed properties:
-/* TODO
-  val startTimeVar : Int = 0 * Options.BITS
-  val offsetTimeVar : Int = Options.BITS_PER_TIME_VAR
+
+  val startTimeVar : Int = 3 * Options.BITS
+  val offsetTimeVar : Int = 4
 
   val (sBegin,sEnd) = (startTimeVar,startTimeVar + offsetTimeVar - 1)
   val (uBegin,uEnd) = (sEnd + 1, sEnd + offsetTimeVar)
   val (dBegin,dEnd) = (uEnd + 1, uEnd + offsetTimeVar)
   val (cBegin,cEnd) = (dEnd + 1, dEnd + offsetTimeVar)
   val (lBegin,lEnd) = (cEnd + 1, cEnd + offsetTimeVar)
-
-  println("========")
-  println((sBegin,sEnd))
-  println((uBegin,uEnd))
-  println((dBegin,dEnd))
-  println((cBegin,cEnd))
-  println((lBegin,lEnd))
-  println("========")
 
   val tPosArray = (sBegin to sEnd).toArray
   val uPosArray = (uBegin to uEnd).toArray
@@ -1173,84 +1237,56 @@ class Formula_p(monitor: Monitor) extends Formula(monitor) {
   }
 
   val zeroTime : BDD = bddGenerator.B.buildCube(0,tPosArrayHighToLow)
-*/
-  // End of declarations related to timed properties
 
-  /* TODO
   val limitMap : Map[Int,BDD] =
     Map(
-
+      3 -> bddGenerator.B.buildCube(3,lPosArrayHighToLow),
+      4 -> bddGenerator.B.buildCube(4,lPosArrayHighToLow)
     )
 
-  val maxTimeLimit = 0 + 1
+  val maxTimeLimit = 4 + 1
   var DeltaBDD : BDD = null
 
   override def setTime(actualDelta: Int) {
-
+    val reducedDelta = scala.math.min(actualDelta,maxTimeLimit)
+    DeltaBDD = bddGenerator.B.buildCube(reducedDelta,dPosArrayHighToLow)
   }
-   */
 
-  override def evaluate(): Boolean = {
-    // assignments1 (leaf nodes that are not rule calls):
-    now(3) = build("CMD_DISPATCH")(C("MOB_NAV_PRM_SET"),C("4"))
-    now(4) = build("CMD_COMPLETE")(C("MOB_NAV_PRM_SET"),C("4"))
-    now(6) = build("CMD_DISPATCH")(C("ARM_PRM_SETDMP"),C("4"))
-    now(7) = build("CMD_COMPLETE")(C("ARM_PRM_SETDMP"),C("4"))
-    now(9) = build("TLM_TR_ERROR")()
-    // assignments2 (rule nodes excluding what is below @ and excluding leaf nodes):
-    // assignments3 (rule calls):
-    // assignments4 (the rest of rules that are below @ and excluding leaf nodes):
-    // assignments5 (main formula excluding leaf nodes):
-    now(2) = now(3).or(now(4).not().and(pre(2)))
-    now(5) = now(6).or(now(7).not().and(pre(5)))
-    now(1) = now(2).or(now(5))
-    now(8) = now(9).not()
-    now(0) = now(1).not().or(now(8))
-
-    debugMonitorState()
-
-    val error = now(0).isZero
-    if (error) monitor.recordResult()
-    tmp = now
-    now = pre
-    pre = tmp
-    touchedByLastEvent = emptyTouchedSet
-    !error
-  }
+  // End of declarations related to timed properties
 
   varsInRelations = Set()
-  val indices: List[Int] = List(5,2)
+  val indices: List[Int] = List(11,6)
 
-  pre = Array.fill(10)(bddGenerator.False)
-  now = Array.fill(10)(bddGenerator.False)
+  pre = Array.fill(14)(bddGenerator.False)
+  now = Array.fill(14)(bddGenerator.False)
 
   txt = Array(
-    "([CMD_DISPATCH(''MOB_NAV_PRM_SET'',''4''),CMD_COMPLETE(''MOB_NAV_PRM_SET'',''4'')) | [CMD_DISPATCH(''ARM_PRM_SETDMP'',''4''),CMD_COMPLETE(''ARM_PRM_SETDMP'',''4''))) -> !TLM_TR_ERROR",
-    "[CMD_DISPATCH(''MOB_NAV_PRM_SET'',''4''),CMD_COMPLETE(''MOB_NAV_PRM_SET'',''4'')) | [CMD_DISPATCH(''ARM_PRM_SETDMP'',''4''),CMD_COMPLETE(''ARM_PRM_SETDMP'',''4''))",
-    "[CMD_DISPATCH(''MOB_NAV_PRM_SET'',''4''),CMD_COMPLETE(''MOB_NAV_PRM_SET'',''4''))",
-    "CMD_DISPATCH(''MOB_NAV_PRM_SET'',''4'')",
-    "CMD_COMPLETE(''MOB_NAV_PRM_SET'',''4'')",
-    "[CMD_DISPATCH(''ARM_PRM_SETDMP'',''4''),CMD_COMPLETE(''ARM_PRM_SETDMP'',''4''))",
-    "CMD_DISPATCH(''ARM_PRM_SETDMP'',''4'')",
-    "CMD_COMPLETE(''ARM_PRM_SETDMP'',''4'')",
-    "!TLM_TR_ERROR",
-    "TLM_TR_ERROR"
+    "Forall x . r(x) -> ((Exists y . ExistsTime . true S[<=3] p(y)) & (Exists z . ExistsTime . true S[<=4] q(z)))",
+    "r(x) -> ((Exists y . ExistsTime . true S[<=3] p(y)) & (Exists z . ExistsTime . true S[<=4] q(z)))",
+    "r(x)",
+    "(Exists y . ExistsTime . true S[<=3] p(y)) & (Exists z . ExistsTime . true S[<=4] q(z))",
+    "Exists y . ExistsTime . true S[<=3] p(y)",
+    "ExistsTime . true S[<=3] p(y)",
+    "true S[<=3] p(y)",
+    "true",
+    "p(y)",
+    "Exists z . ExistsTime . true S[<=4] q(z)",
+    "ExistsTime . true S[<=4] q(z)",
+    "true S[<=4] q(z)",
+    "true",
+    "q(z)"
   )
 
   debugMonitorState()
 }
 
-
-
 /* The specialized Monitor for the provided properties. */
 
 class PropertyMonitor extends Monitor {
-  def eventsInSpec: Set[String] = Set("CMD_DISPATCH","CMD_COMPLETE","TLM_TR_ERROR")
+  def eventsInSpec: Set[String] = Set("r","p","q")
 
   formulae ++= List(new Formula_p(this))
 }
-
-
 
 object TraceMonitor {
   def main(args: Array[String]): Unit = {
