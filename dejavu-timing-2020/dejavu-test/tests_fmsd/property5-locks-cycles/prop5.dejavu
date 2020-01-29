@@ -1,0 +1,10 @@
+
+// Requirement:
+// - Locks should not be acquired in a cyclic manner amongst threads 
+//   (dining philosopher problem).
+
+prop locksDeadlocks :
+  Forall t1 . Forall t2 . Forall l1 . Forall l2 .
+    (@ [acq(t1,l1),rel(t1,l1)) & acq(t1,l2))
+    ->
+    (! @ P (@ [acq(t2,l2),rel(t2,l2)) & acq(t2,l1)))

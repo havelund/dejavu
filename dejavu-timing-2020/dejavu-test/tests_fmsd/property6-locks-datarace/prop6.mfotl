@@ -1,0 +1,18 @@
+
+  FORALL t1 . FORALL t2 . FORALL x .
+    (
+      (
+        (ONCE (read(t1,x) OR write(t1,x)))
+        AND
+        (ONCE write(t2,x))
+      )
+      IMPLIES
+      EXISTS l .
+        (
+          (PAST_ALWAYS ((read(t1,x) OR write(t1,x)) 
+              IMPLIES (NOT rel(t1,l) SINCE acq(t1,l))))
+          AND
+          (PAST_ALWAYS ((read(t2,x) OR write(t2,x)) 
+              IMPLIES (NOT rel(t2,l) SINCE acq(t2,l))))
+        )
+    )

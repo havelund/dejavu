@@ -1,0 +1,2 @@
+
+prop file : Forall f . close(f) -> Exists m . @ [open(f,m),close(f))

@@ -1,0 +1,31 @@
+digraph G {
+  0 [shape=octagon, color=red, label="0 : Forall u . Forall f . access(u,f) -> ((ExistsTime . !logout(u) S[<=50] login(u)) & (ExistsTime . !close(f) S[<=50] open(f)))"]
+  1 [shape=box, label="1 : Forall f . access(u,f) -> ((ExistsTime . !logout(u) S[<=50] login(u)) & (ExistsTime . !close(f) S[<=50] open(f)))"]
+  2 [shape=box, label="2 : access(u,f) -> ((ExistsTime . !logout(u) S[<=50] login(u)) & (ExistsTime . !close(f) S[<=50] open(f)))"]
+  3 [shape=box, label="3 : access(u,f)"]
+  4 [shape=box, label="4 : (ExistsTime . !logout(u) S[<=50] login(u)) & (ExistsTime . !close(f) S[<=50] open(f))"]
+  5 [shape=box, label="5 : ExistsTime . !logout(u) S[<=50] login(u)"]
+  6 [shape=box, label="6 : !logout(u) S[<=50] login(u)"]
+  7 [shape=box, label="7 : !logout(u)"]
+  8 [shape=box, label="8 : logout(u)"]
+  7 -> 8
+  9 [shape=box, label="9 : login(u)"]
+  6 -> 7
+  6 -> 9
+  5 -> 6
+  10 [shape=box, label="10 : ExistsTime . !close(f) S[<=50] open(f)"]
+  11 [shape=box, label="11 : !close(f) S[<=50] open(f)"]
+  12 [shape=box, label="12 : !close(f)"]
+  13 [shape=box, label="13 : close(f)"]
+  12 -> 13
+  14 [shape=box, label="14 : open(f)"]
+  11 -> 12
+  11 -> 14
+  10 -> 11
+  4 -> 5
+  4 -> 10
+  2 -> 3
+  2 -> 4
+  1 -> 2
+  0 -> 1
+}

@@ -1,0 +1,9 @@
+
+prop access :
+  Forall u . Forall f .
+    access(u,f) ->
+      (
+         (!logout(u) S login(u))
+            &
+         (!close(f) S open(f))
+      )

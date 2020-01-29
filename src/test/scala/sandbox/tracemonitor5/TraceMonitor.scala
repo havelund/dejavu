@@ -1,3 +1,4 @@
+
 package sandbox.tracemonitor5
 
 /* Generic Monitoring Code common for all properties. */
@@ -569,29 +570,31 @@ abstract class Monitor {
     var eventSize : Int = 0
     val records: Iterable[CSVRecord] = CSVFormat.DEFAULT.parse(in).asScala
     lineNr = 0
-    for (record <- records) {
-      lineNr += 1
-      if (Options.PRINT && lineNr % Options.PRINT_LINENUMBER_EACH == 0) {
-        if (lineNr >= 1000000)
-          println(lineNr.toDouble / 1000000 + " M")
-        else if (lineNr >= 1000)
-          println(lineNr.toDouble / 1000 + " K")
-        else
-          println(lineNr.toDouble)
+    time {
+      for (record <- records) {
+        lineNr += 1
+        if (Options.PRINT && lineNr % Options.PRINT_LINENUMBER_EACH == 0) {
+          if (lineNr >= 1000000)
+            println(lineNr.toDouble / 1000000 + " M")
+          else if (lineNr >= 1000)
+            println(lineNr.toDouble / 1000 + " K")
+          else
+            println(lineNr.toDouble)
+        }
+        val name = record.get(0)
+        var args = new ListBuffer[Any]()
+        if (timed) {
+          eventSize = record.size() - 1
+          val timeStamp: Int = record.get(eventSize).toInt
+          setTime(timeStamp)
+        } else {
+          eventSize = record.size()
+        }
+        for (i <- 1 until eventSize) {
+          args += record.get(i)
+        }
+        submit(name, args.toList)
       }
-      val name = record.get(0)
-      var args = new ListBuffer[Any]()
-      if (timed) {
-        eventSize = record.size() - 1
-        val timeStamp : Int = record.get(eventSize).toInt
-        setTime(timeStamp)
-      } else {
-        eventSize = record.size()
-      }
-      for (i <- 1 until eventSize) {
-        args += record.get(i)
-      }
-      submit(name, args.toList)
     }
     println(s"Processed $lineNr events")
     in.close()
@@ -1131,42 +1134,19 @@ abstract class Formula(val monitor: Monitor) {
 
 
 /*
-  prop p : Forall x . r(x) -> ((Exists y . ExistsTime . true S[<=3] p(y)) & (Exists z . ExistsTime . true S[<=4] q(z)))
+  prop Better : forall cmd . success(cmd) -> ExistsTime . !fail(cmd) S[<=4] dispatch(cmd)
 */
 
-class Formula_p(monitor: Monitor) extends Formula(monitor) {
+class Formula_Better(monitor: Monitor) extends Formula(monitor) {
 
   override def evaluate(): Boolean = {
-    // assignments1 (leaf nodes that are not rule calls):
-    now(2) = build("r")(V("x"))
-    now(8) = build("p")(V("y"))
-    now(13) = build("q")(V("z"))
-    // assignments2 (rule nodes excluding what is below @ and excluding leaf nodes):
-    // assignments3 (rule calls):
-    // assignments4 (the rest of rules that are below @ and excluding leaf nodes):
-    // assignments5 (main formula excluding leaf nodes):
-    now(7) = bddGenerator.True
-    now(6) =
-      (now(8).and(zeroTime)).or(
-        now(7)
-          .and(pre(6))
-          .and(DeltaBDD)
-          .and(limitMap(3))
-          .and(addConst(tBDDList,uBDDList,dBDDList,cBDDList))
-          .and(gtConst(uBDDListHighToLow,lBDDListHighToLow).not())
-          .exist(var_t_quantvar)
-          .exist(var_d_quantvar)
-          .exist(var_c_quantvar)
-          .exist(var_l_quantvar)
-          .replace(u_to_t_map)
-      )
-    now(5) = now(6).exist(var_t_quantvar)
-    now(4) = now(5).exist(var_y.quantvar)
-    now(12) = bddGenerator.True
-    now(11) =
-      (now(13).and(zeroTime)).or(
-        now(12)
-          .and(pre(11))
+    now(7) = build("dispatch")(V("cmd"))
+    now(6) = build("fail")(V("cmd"))
+    now(5) = now(6).not()
+    now(4) =
+      (now(7).and(zeroTime)).or(
+        now(5)
+          .and(pre(4))
           .and(DeltaBDD)
           .and(limitMap(4))
           .and(addConst(tBDDList,uBDDList,dBDDList,cBDDList))
@@ -1177,11 +1157,10 @@ class Formula_p(monitor: Monitor) extends Formula(monitor) {
           .exist(var_l_quantvar)
           .replace(u_to_t_map)
       )
-    now(10) = now(11).exist(var_t_quantvar)
-    now(9) = now(10).exist(var_z.quantvar)
-    now(3) = now(4).and(now(9))
+    now(3) = now(4).exist(var_t_quantvar)
+    now(2) = build("success")(V("cmd"))
     now(1) = now(2).not().or(now(3))
-    now(0) = now(1).forAll(var_x.quantvar)
+    now(0) = var_cmd.seen.imp(now(1)).forAll(var_cmd.quantvar)
 
     debugMonitorState()
 
@@ -1194,11 +1173,11 @@ class Formula_p(monitor: Monitor) extends Formula(monitor) {
     !error
   }
 
-  val var_x :: var_y :: var_z :: Nil = declareVariables(("x",false), ("y",false), ("z",false))(4)
+  val var_cmd :: Nil = declareVariables(("cmd",true))(4)
 
   // Declarations related to timed properties:
 
-  val startTimeVar : Int = 3 * Options.BITS
+  val startTimeVar : Int = 1 * Options.BITS
   val offsetTimeVar : Int = 4
 
   val (sBegin,sEnd) = (startTimeVar,startTimeVar + offsetTimeVar - 1)
@@ -1240,7 +1219,6 @@ class Formula_p(monitor: Monitor) extends Formula(monitor) {
 
   val limitMap : Map[Int,BDD] =
     Map(
-      3 -> bddGenerator.B.buildCube(3,lPosArrayHighToLow),
       4 -> bddGenerator.B.buildCube(4,lPosArrayHighToLow)
     )
 
@@ -1255,26 +1233,20 @@ class Formula_p(monitor: Monitor) extends Formula(monitor) {
   // End of declarations related to timed properties
 
   varsInRelations = Set()
-  val indices: List[Int] = List(11,6)
+  val indices: List[Int] = List(4)
 
-  pre = Array.fill(14)(bddGenerator.False)
-  now = Array.fill(14)(bddGenerator.False)
+  pre = Array.fill(8)(bddGenerator.False)
+  now = Array.fill(8)(bddGenerator.False)
 
   txt = Array(
-    "Forall x . r(x) -> ((Exists y . ExistsTime . true S[<=3] p(y)) & (Exists z . ExistsTime . true S[<=4] q(z)))",
-    "r(x) -> ((Exists y . ExistsTime . true S[<=3] p(y)) & (Exists z . ExistsTime . true S[<=4] q(z)))",
-    "r(x)",
-    "(Exists y . ExistsTime . true S[<=3] p(y)) & (Exists z . ExistsTime . true S[<=4] q(z))",
-    "Exists y . ExistsTime . true S[<=3] p(y)",
-    "ExistsTime . true S[<=3] p(y)",
-    "true S[<=3] p(y)",
-    "true",
-    "p(y)",
-    "Exists z . ExistsTime . true S[<=4] q(z)",
-    "ExistsTime . true S[<=4] q(z)",
-    "true S[<=4] q(z)",
-    "true",
-    "q(z)"
+    "forall cmd . success(cmd) -> ExistsTime . !fail(cmd) S[<=4] dispatch(cmd)",
+    "success(cmd) -> ExistsTime . !fail(cmd) S[<=4] dispatch(cmd)",
+    "success(cmd)",
+    "ExistsTime . !fail(cmd) S[<=4] dispatch(cmd)",
+    "!fail(cmd) S[<=4] dispatch(cmd)",
+    "!fail(cmd)",
+    "fail(cmd)",
+    "dispatch(cmd)"
   )
 
   debugMonitorState()
@@ -1283,9 +1255,9 @@ class Formula_p(monitor: Monitor) extends Formula(monitor) {
 /* The specialized Monitor for the provided properties. */
 
 class PropertyMonitor extends Monitor {
-  def eventsInSpec: Set[String] = Set("r","p","q")
+  def eventsInSpec: Set[String] = Set("success","fail","dispatch")
 
-  formulae ++= List(new Formula_p(this))
+  formulae ++= List(new Formula_Better(this))
 }
 
 object TraceMonitor {

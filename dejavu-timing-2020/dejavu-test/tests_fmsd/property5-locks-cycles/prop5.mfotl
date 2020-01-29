@@ -1,0 +1,7 @@
+
+FORALL t1 . FORALL t2 . FORALL l1 . FORALL l2 .
+    ((PREVIOUS (NOT rel(t1,l1) SINCE acq(t1,l1))) AND acq(t1,l2))
+    IMPLIES
+    (NOT PREVIOUS ONCE ((PREVIOUS (NOT rel(t2,l2) SINCE acq(t2,l2))) AND acq(t2,l1)))
+
+

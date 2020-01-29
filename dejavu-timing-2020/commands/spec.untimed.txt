@@ -1,0 +1,5 @@
+
+prop commands :
+  Forall m .
+    suc(m) ->
+      Exists p . !fail(m) S dis(m,p)

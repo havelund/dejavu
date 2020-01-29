@@ -1,0 +1,5 @@
+open (a:string)
+close (b:string)
+login (c:string)
+logout (d:string)
+access (e:string, f:string)

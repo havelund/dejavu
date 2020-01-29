@@ -167,6 +167,8 @@ case class Spec(properties: List[Property]) {
         log2(maxTimeValue)
       }
 
+      println(s"$bitsPerTimeVar time bits allocated!")
+
       val variables = property.getQuantifiedVariables
       if (variables == Nil) {
         writeln(s"  declareVariables()($bitsPerTimeVar)")
