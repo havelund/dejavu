@@ -1,0 +1,13 @@
+dis,stop,10
+dis,off,12
+dis,turn,15
+dis,stop,17
+dis,off,25
+dis,stop,30
+suc,stop,35
+dis,stop,50
+dis,off,55
+dis,off,60
+suc,off,10
+dis,off,65
+dis,off,70

@@ -1,4 +1,5 @@
-package dejavu
+
+package sandbox.tracemonitor6
 
 /* Generic Monitoring Code common for all properties. */
 
@@ -887,6 +888,7 @@ abstract class Formula(val monitor: Monitor) {
     **/
 
   def addConst(t: List[BDD], u: List[BDD], d: List[BDD], c: List[BDD]): BDD = {
+    println(s"addConst(${t.mkString("[",",","]")},${d.mkString("[",",","]")})")
     (t, u, d, c) match {
       case (t_bit :: t_rest, u_bit :: u_rest, d_bit :: d_rest, c_bit :: c_rest) =>
         val initBDD = u_bit.biimp(t_bit.xor(d_bit))
@@ -955,6 +957,7 @@ abstract class Formula(val monitor: Monitor) {
     */
 
   def gtConst(u: List[BDD], l: List[BDD]): BDD = {
+    println(s"gtConst(${u.mkString("[",",","]")} , ${l.mkString("[",",","]")})")
     (u, l) match {
       case (Nil, Nil) => bddGenerator.False
       case (u_bit :: u_rest, l_bit :: l_rest) =>
@@ -1152,3 +1155,206 @@ abstract class Formula(val monitor: Monitor) {
     }
   }
 }
+
+
+/*
+  prop commands : Forall m . suc(m) -> ExistsTime . true S[<=10] dis(m)
+*/
+
+class Formula_commands(monitor: Monitor) extends Formula(monitor) {
+
+  override def evaluate(): Boolean = {
+    now(6) = build("dis")(V("m"))
+    now(5) = bddGenerator.True
+
+//    now(4) =
+//      (now(6).and(zeroTime)).or(
+//        now(5)
+//          .and(pre(4))
+//          .and(DeltaBDD)
+//          .and(limitMap(10))
+//          .and(addConst(tBDDList, uBDDList, dBDDList, cBDDList))
+//          .and(gtConst(uBDDListHighToLow, lBDDListHighToLow).not())
+//          .exist(var_t_quantvar)
+//          .exist(var_d_quantvar)
+//          .exist(var_c_quantvar)
+//          .exist(var_l_quantvar)
+//          .replace(u_to_t_map)
+//      )
+
+    // @@@\ TODO: DONE
+
+    now(4) =
+      ((pre(3).not().or(now(5).not())).and(now(6)).and(zeroTime)).or(
+        now(5)
+          .and(pre(4))
+          .and(DeltaBDD)
+          .and(limitMap(10))
+          .and(gtConst(tBDDListHighToLow, lBDDListHighToLow).ite(
+            uMap(10),
+            addConst(tBDDList, uBDDList, dBDDList, cBDDList)
+           ))
+          .exist(var_t_quantvar)
+          .exist(var_d_quantvar)
+          .exist(var_c_quantvar)
+          .exist(var_l_quantvar)
+          .replace(u_to_t_map)
+      )
+
+    now(3) = now(4)
+      .and(limitMap(10))
+      .and(gtConst(tBDDListHighToLow, lBDDListHighToLow))
+      .exist(var_l_quantvar)
+      .exist(var_t_quantvar)
+
+    // @@@/
+
+    // now(3) = now(4).exist(var_t_quantvar)
+    now(2) = build("suc")(V("m"))
+    now(1) = now(2).not().or(now(3))
+    now(0) = now(1).forAll(var_m.quantvar)
+
+    debugMonitorState()
+
+    val error = now(0).isZero
+    if (error) monitor.recordResult()
+    tmp = now
+    now = pre
+    pre = tmp
+    touchedByLastEvent = emptyTouchedSet
+    !error
+  }
+
+  val var_m :: Nil = declareVariables(("m", false))(5)
+
+  // Declarations related to timed properties:
+
+  val startTimeVar: Int = 1 * Options.BITS
+  val offsetTimeVar: Int = 5
+
+  val (sBegin, sEnd) = (startTimeVar, startTimeVar + offsetTimeVar - 1)
+  val (uBegin, uEnd) = (sEnd + 1, sEnd + offsetTimeVar)
+  val (dBegin, dEnd) = (uEnd + 1, uEnd + offsetTimeVar)
+  val (cBegin, cEnd) = (dEnd + 1, dEnd + offsetTimeVar)
+  val (lBegin, lEnd) = (cEnd + 1, cEnd + offsetTimeVar)
+
+  println(s"(sBegin, sEnd) = ${(sBegin, sEnd)}")
+  println(s"(uBegin, uEnd) = ${(uBegin, uEnd)}")
+  println(s"(dBegin, dEnd) = ${(dBegin, dEnd)}")
+  println(s"(cBegin, cEnd) = ${(cBegin, cEnd)}")
+  println(s"(lBegin, lEnd) = ${(lBegin, lEnd)}")
+
+  val tPosArray = (sBegin to sEnd).toArray
+  val uPosArray = (uBegin to uEnd).toArray
+  val dPosArray = (dBegin to dEnd).toArray
+  val cPosArray = (cBegin to cEnd).toArray
+  val lPosArray = (lBegin to lEnd).toArray
+
+  val tBDDList = generateBDDList(tPosArray)
+  val uBDDList = generateBDDList(uPosArray)
+  val dBDDList = generateBDDList(dPosArray)
+  val cBDDList = generateBDDList(cPosArray)
+  val lBDDList = generateBDDList(lPosArray)
+
+  val tBDDListHighToLow = tBDDList.reverse // TODO : DONE
+  val uBDDListHighToLow = uBDDList.reverse
+  val lBDDListHighToLow = lBDDList.reverse
+
+  val tPosArrayHighToLow = tPosArray.reverse
+  val uPosArrayHighToLow = uPosArray.reverse // TODO : DONE
+  val dPosArrayHighToLow = dPosArray.reverse
+  val lPosArrayHighToLow = lPosArray.reverse
+
+  val var_t_quantvar: BDD = bddGenerator.getQuantVars(tPosArray)
+  val var_d_quantvar: BDD = bddGenerator.getQuantVars(dPosArray)
+  val var_c_quantvar: BDD = bddGenerator.getQuantVars(cPosArray)
+  val var_l_quantvar: BDD = bddGenerator.getQuantVars(lPosArray)
+
+  val u_to_t_map = bddGenerator.B.makePair()
+  for ((u, t) <- uPosArray.zip(tPosArray)) {
+    u_to_t_map.set(u, t)
+  }
+
+  val zeroTime: BDD = bddGenerator.B.buildCube(0, tPosArrayHighToLow)
+
+  val limitMap: Map[Int, BDD] =
+    Map(
+      10 -> bddGenerator.B.buildCube(10, lPosArrayHighToLow)
+    )
+
+  // @@@\ TODO: DONE
+
+  val uMap: Map[Int, BDD] =
+    Map(
+      10 -> bddGenerator.B.buildCube(10 + 1, uPosArrayHighToLow)
+    )
+
+  // @@@/
+
+  val maxTimeLimit = 10 + 1
+  var DeltaBDD: BDD = null
+
+  override def setTime(actualDelta: Int) {
+    val reducedDelta = scala.math.min(actualDelta, maxTimeLimit)
+    DeltaBDD = bddGenerator.B.buildCube(reducedDelta, dPosArrayHighToLow)
+  }
+
+  // End of declarations related to timed properties
+
+  varsInRelations = Set()
+  val indices: List[Int] = List(4)
+
+  pre = Array.fill(7)(bddGenerator.False)
+  now = Array.fill(7)(bddGenerator.False)
+
+  txt = Array(
+    "Forall m . suc(m) -> ExistsTime . true S[>10] dis(m)",
+    "suc(m) -> ExistsTime . true S[>10] dis(m)",
+    "suc(m)",
+    "ExistsTime . true S[>10] dis(m)",
+    "true S[>10] dis(m)",
+    "true",
+    "dis(m)"
+  )
+
+  debugMonitorState()
+}
+
+/* The specialized Monitor for the provided properties. */
+
+class PropertyMonitor extends Monitor {
+  def eventsInSpec: Set[String] = Set("suc", "dis")
+
+  formulae ++= List(new Formula_commands(this))
+}
+
+object TraceMonitor {
+  def main(args: Array[String]): Unit = {
+    if (1 <= args.length && args.length <= 3) {
+      if (args.length > 1) Options.BITS = args(1).toInt
+      val m = new PropertyMonitor
+      val file = args(0)
+      if (args.length == 3 && args(2) == "debug") Options.DEBUG = true
+      if (args.length == 3 && args(2) == "profile") Options.PROFILE = true
+      try {
+        openResultFile("dejavu-results")
+        if (Options.PROFILE) {
+          openProfileFile("dejavu-profile.csv")
+          m.printProfileHeader()
+        }
+        m.submitCSVFile(file)
+      } catch {
+        case e: Throwable =>
+          println(s"\n*** $e\n")
+        // e.printStackTrace()
+      } finally {
+        closeResultFile()
+        if (Options.PROFILE) closeProfileFile()
+      }
+    } else {
+      println("*** call with these arguments:")
+      println("<logfile> [<bits> [debug|profile]]")
+    }
+  }
+}
+

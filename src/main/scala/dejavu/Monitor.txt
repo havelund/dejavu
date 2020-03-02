@@ -994,6 +994,25 @@ abstract class Formula(val monitor: Monitor) {
   def setTime(actualDelta: Int) {}
 
   /**
+    * Returns the True BDD if the Delta time (the time difference between the
+    * time stamp of the current event and the time stamp of the previous event)
+    * is less than the time limit passed as argument, otherwise the False BDD
+    * is returned.
+    *
+    * @param timeLimit the timelimit (small delta) occuring as part of a temporal
+    *                  operator in the property being evaluated.
+    * @return the True or False BDD, depending on whether the time passed since last
+    *         event is less than the argument time value or not.
+    */
+
+  def deltaLessThanTimeLimit(timeLimit: Int): BDD = {
+    if (monitor.deltaTime < timeLimit)
+      bddGenerator.True
+    else
+      bddGenerator.False
+  }
+
+  /**
     * Declares all variables (each identified by a name) in a formula.
     * This includes initializing the BDD generator, which is stored in
     * <code>bddGenerator</code>, and initializing <code>True</code> and

@@ -1,0 +1,7 @@
+
+prop telemetry1:
+  Forall x .
+    closed(x) -> !telem(x)
+    where
+    closed(x) := toggle(x) <-> @!closed(x)
+

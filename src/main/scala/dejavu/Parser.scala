@@ -110,17 +110,24 @@ class Parser extends JavaTokenParsers {
     ltlLeaf ~ "S" ~ ltTime ~ ltlLeaf ^^ {
       case ltl1 ~ _ ~ time ~ ltl2 => ExistsTime(SinceTimeLE(ltl1, time, ltl2))
     } |
+      ltlLeaf ~ "S" ~ gtTime ~ ltlLeaf ^^ {
+        case ltl1 ~ _ ~ time ~ ltl2 => ExistsTimeGT(SinceTimeGT(ltl1, time, ltl2), time)
+      } |
+      ltlLeaf ~ "Z" ~ ltTime ~ ltlLeaf ^^ {
+        case ltl1 ~ _ ~ time ~ ltl2 => ExistsTime(ZinceTimeLE(ltl1, time, ltl2))
+      } |
       ltlLeaf ~ "S" ~ ltlLeaf ^^ {
-        case ltl1 ~ _ ~ ltl2 => Since(ltl1,ltl2)
+        case ltl1 ~ _ ~ ltl2 => Since(ltl1, ltl2)
       } |
       ltlLeaf
 
-  //ltlLeaf ~ rep("S" ~ ltlLeaf) ^^ {
-  //   case ltl ~ ltls => mkBinary(ltl, ltls)
-  //}
-
   def ltTime: Parser[Int] =
     "[<=" ~ wholeNumber ~ "]" ^^ {
+      case _ ~ n ~ _ => n.toInt
+    }
+
+  def gtTime: Parser[Int] =
+    "[>" ~ wholeNumber ~ "]" ^^ {
       case _ ~ n ~ _ => n.toInt
     }
 

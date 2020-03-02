@@ -3,3 +3,8 @@
 */target/*
 target/*
 *~
+TraceMonitor.scala
+ast.dot
+dejavu-results
+.idea/
+project/project/

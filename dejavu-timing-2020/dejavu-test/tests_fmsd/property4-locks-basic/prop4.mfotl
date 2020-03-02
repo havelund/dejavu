@@ -1,7 +1,0 @@
-FORALL t. FORALL l . 
-    (
-      (sleep(t) IMPLIES NOT (NOT rel(t,l) SINCE acq(t,l))) AND
-      (acq(t,l) IMPLIES NOT EXISTS s . PREVIOUS (NOT rel(s,l) SINCE acq(s,l))) AND
-      (rel(t,l) IMPLIES PREVIOUS (NOT rel(t,l) SINCE acq(t,l)))
-    )
-

@@ -19,13 +19,6 @@ object Options {
   var STATISTICS: Boolean = true
 }
 
-/*
-
-bw.write(text)
-bw.close()
-
- */
-
 object Util {
   type Binding = Map[String, Any]
   val emptyBinding: Binding = Map()
@@ -301,16 +294,22 @@ class Variable(F: Formula)(name: String, bounded: Boolean, offset: Int, nrOfBits
 }
 
 /**
-  * An object of this class represents all the variables in a formula.
+  * An object of this class represents all the variables in a formula,
+  * including variables containing time values if timed temporal properties
+  * occur in the property.
+  *
   * It contains a mapping from variable names (strings) to objects of
   * class <code>Variable</code>, each of which contains the hashmap
   * from values of the corresponding variable to BDDs.
   *
-  * @param variables the variables in the formula, each indicated by
-  *                  name, whether it is bounded (true = yes), and number of bits representing it.
+  * @param variables      the variables in the formula, each indicated by
+  *                       name, whether it is bounded (true = yes), and number of bits representing it.
+  * @param bitsPerTimeVar the number of bits to be allocated per time variable.
+  *                       This number is `0` if the property does not contain
+  *                       timed temporal operators.
   */
 
-class BDDGenerator(F: Formula)(variables: List[(String, Boolean, Int)]) {
+class BDDGenerator(F: Formula)(variables: List[(String, Boolean, Int)], bitsPerTimeVar: Int) {
   var B: BDDFactory = BDDFactory.init(10000, 10000)
   val True: BDD = B.one()
   val False: BDD = B.zero()
@@ -328,8 +327,10 @@ class BDDGenerator(F: Formula)(variables: List[(String, Boolean, Int)]) {
     result
   }
 
-  if (totalNumberOfBits > 0) {
-    B.setVarNum(totalNumberOfBits)
+  val nrOfTimeVariables = 5
+
+  if (totalNumberOfBits > 0 || bitsPerTimeVar > 0) {
+    B.setVarNum(totalNumberOfBits + (nrOfTimeVariables * bitsPerTimeVar))
   }
 
   /**
@@ -464,6 +465,22 @@ abstract class Monitor {
   var lineNr: Int = 0
   var garbageWasCollected: Boolean = false
   var statistics: TraceStatistics = new TraceStatistics(eventsInSpec)
+  var currentTime: Int = 0
+  var deltaTime: Int = 0
+  var errors: Int = 0
+
+  /**
+    * Sets the current time to the time indicated by the timestamp associated
+    * with the latest event. It specifically sets `deltaTime` to denote the
+    * difference between the previous time stamp and this one.
+    *
+    * @param timeStamp the new time value for the latest event.
+    */
+
+  def setTime(timeStamp: Int): Unit = {
+    deltaTime = timeStamp - currentTime
+    currentTime = timeStamp
+  }
 
   /**
     * Returns the set of events referred to in the specification, either defined, or referred to
@@ -489,7 +506,7 @@ abstract class Monitor {
     val ms = (t2 - t1).toFloat
     val sec = ms / 1000
     println()
-    println("Elapsed time: " + sec + "s")
+    println("Elapsed analysis time: " + sec + "s")
     result
   }
 
@@ -548,28 +565,40 @@ abstract class Monitor {
   def submitCSVFile(file: String) {
     val in: Reader = new BufferedReader(new FileReader(file))
     // DEFAULT.withHeader()
-    val records: Iterable[CSVRecord] = CSVFormat.DEFAULT.parse(in).asScala
-    lineNr = 0
-    for (record <- records) {
-      lineNr += 1
-      if (Options.PRINT && lineNr % Options.PRINT_LINENUMBER_EACH == 0) {
-        if (lineNr >= 1000000)
-          println(lineNr.toDouble / 1000000 + " M")
-        else if (lineNr >= 1000)
-          println(lineNr.toDouble / 1000 + " K")
-        else
-          println(lineNr.toDouble)
+    val timed: Boolean = file.contains(".timed.")
+    var eventSize: Int = 0
+    time {
+      val records: Iterable[CSVRecord] = CSVFormat.DEFAULT.parse(in).asScala
+      lineNr = 0
+
+      for (record <- records) {
+        lineNr += 1
+        if (Options.PRINT && lineNr % Options.PRINT_LINENUMBER_EACH == 0) {
+          if (lineNr >= 1000000)
+            println(lineNr.toDouble / 1000000 + " M")
+          else if (lineNr >= 1000)
+            println(lineNr.toDouble / 1000 + " K")
+          else
+            println(lineNr.toDouble)
+        }
+        val name = record.get(0)
+        var args = new ListBuffer[Any]()
+        if (timed) {
+          eventSize = record.size() - 1
+          val timeStamp: Int = record.get(eventSize).toInt
+          setTime(timeStamp)
+        } else {
+          eventSize = record.size()
+        }
+        for (i <- 1 until eventSize) {
+          args += record.get(i)
+        }
+        submit(name, args.toList)
       }
-      val name = record.get(0)
-      var args = new ListBuffer[Any]()
-      for (i <- 1 until record.size()) {
-        args += record.get(i)
-      }
-      submit(name, args.toList)
+      println(s"Processed $lineNr events")
+      in.close()
+      end()
     }
-    println(s"Processed $lineNr events")
-    in.close()
-    end()
   }
 
   /**
@@ -578,6 +607,7 @@ abstract class Monitor {
     */
 
   def end(): Unit = {
+    println(s"\n$errors errors detected!\n")
     if (Options.STATISTICS) println(statistics)
     if (garbageWasCollected) {
       println("\n*** GARBAGE COLLECTOR WAS ACTIVATED!")
@@ -593,9 +623,11 @@ abstract class Monitor {
     */
 
   def evaluate(): Unit = {
-    debug(s"\n$state\n")
+    debug(s"\ncurrentTime = $currentTime\n$state\n")
     for (formula <- formulae) {
+      formula.setTime(deltaTime)
       if (!formula.evaluate()) {
+        errors += 1
         println(s"\n*** Property ${formula.name} violated on event number $lineNr:\n")
         println(state)
       }
@@ -828,22 +860,180 @@ abstract class Formula(val monitor: Monitor) {
   }
 
   /**
+    * Adds a time value `d` to a time value `t`, resulting in the new time value `u` using
+    * carrier bits `c` as auxiliary variables.
+    *
+    * Time values are represented by BDDs. Each such BDD, call it  `B`, represents a sequence of
+    * bits `B1,...,Bn` mentioned from least significant bit to most significant bit. This
+    * allows a recursive algorithm, which adds bits from lowest to highest significant bit.
+    * The `c` the carrier bits used to carry over.
+    *
+    * E.g. say we want to add `t=01`` (the number 1) and `d=01` (the number 1). These are
+    * passed to this function as `10` and `10` respectively (least significant bits first).
+    * The function adds `1` and `1` giving `0` and resulting in carrier bit `c1` being `1`.
+    * `c1=1` is then used when adding the two `0` resulting in `1`, overall resulting in `01`
+    * with the least significant but mentioned first, hence this is
+    * `10` in normal bit format (the number 2).
+    *
+    * The function takes care of the first (least significant) bit addition, and then calls
+    * `addConstRest` for the rest of the bits.
+    *
+    * @param t the time value to add to (from previous event).
+    * @param u the resulting time value.
+    * @param d the time delta to add to `t` (the time difference between this and previous event).
+    * @param c the carrier bits used as auxiliary variable.
+    * @return the BDD defining the result `u` of the addition.
+    **/
+
+  def addConst(t: List[BDD], u: List[BDD], d: List[BDD], c: List[BDD]): BDD = {
+    (t, u, d, c) match {
+      case (t_bit :: t_rest, u_bit :: u_rest, d_bit :: d_rest, c_bit :: c_rest) =>
+        val initBDD = u_bit.biimp(t_bit.xor(d_bit))
+        val initCarrier = c_bit.biimp(t_bit.and(d_bit))
+        initBDD.and(initCarrier).and(addConstRest(t_rest, u_rest, d_rest, c_bit :: c_rest))
+      case _ => assert(false, "addConst pattern match fails").asInstanceOf[BDD]
+    }
+  }
+
+  /**
+    * Adds a time value `d` to a time value `t`, resulting in the new time value `u` using
+    * carrier bits `c` as auxiliary variables.
+    *
+    * This function is called on all bits following the least significant bit. See
+    * `addConst`.
+    *
+    * @param t the time value to add to (from previous event).
+    * @param u the resulting time value.
+    * @param d the time delta to add to `t` (the time difference between this and previous event).
+    * @param c the carrier bits used as auxiliary variable.
+    * @return the BDD defining the result `u` of the addition.
+    */
+
+  def addConstRest(t: List[BDD], u: List[BDD], d: List[BDD], c: List[BDD]): BDD = {
+    (t, u, d, c) match {
+      case (Nil, Nil, Nil, _) => bddGenerator.True
+      case (t_bit :: t_rest, u_bit :: u_rest, d_bit :: d_rest, c_prev :: c_cur :: c_rest) =>
+        val u_bit_def = u_bit.biimp(t_bit.xor(d_bit).xor(c_prev))
+        val c_cur_def = c_cur.biimp(
+          (t_bit.and(d_bit)).or(
+            t_bit.and(c_prev).or(
+              d_bit.and(c_prev)
+            )
+          ))
+        u_bit_def.and(c_cur_def.and(addConstRest(t_rest, u_rest, d_rest, c_cur :: c_rest)))
+      case _ => assert(false, "addConstRest pattern match fails").asInstanceOf[BDD]
+    }
+  }
+
+  /**
+    * Returns true of the first `bit1` is one and the second `bit2` is zero.
+    *
+    * @param bit1 the first bit.
+    * @param bit2 the second bit.
+    * @return the `True` BDD if the first bit is one and the second is zero.
+    */
+
+  def gtBit(bit1: BDD, bit2: BDD): BDD =
+    bit1.and(bit2.not())
+
+  /**
+    * Determines whether one time value `u` is strictly bigger than another `l`.
+    * The time values are presented with the most significant bit first, and the
+    * function recurses over the bits comparing them until the result becomes
+    * obvious.
+    *
+    * E.g. to compare binary `101` (number 5) to binary `110` (number 6) the
+    * function first compares the first two `1`s, which does not determine the
+    * result. It then moves on to the next two bits `0` and `1`, and here it becomes
+    * clear that the first number is not bigger than the second.
+    *
+    * @param u the first time value (the time difference of the current event)
+    * @param l the second time value (the limit constant associated with the S-operator)
+    * @return the result of the comparison, `True` if the first number is bigger than the second.
+    *         Otherwise `False`.
+    */
+
+  def gtConst(u: List[BDD], l: List[BDD]): BDD = {
+    (u, l) match {
+      case (Nil, Nil) => bddGenerator.False
+      case (u_bit :: u_rest, l_bit :: l_rest) =>
+        gtBit(u_bit, l_bit).ite(
+          bddGenerator.True,
+          gtBit(l_bit, u_bit).ite(
+            bddGenerator.False,
+            gtConst(u_rest, l_rest)
+          )
+        )
+      case _ => assert(false, "gtConst pattern match fails").asInstanceOf[BDD]
+    }
+  }
+
+  /**
+    * From a list of BDD variable-numbers (the JavaBDD package represents a
+    * variable by a number), the function returns a list of the BDDs, one for
+    * each of these variables. The BDD returns `1` for `1` and `0` for `0`.
+    *
+    * @param positions the numbers of the variables.
+    * @return the corresponding one-bit BDDs.
+    */
+
+  def generateBDDList(positions: Array[Int]): List[BDD] = {
+    for (pos <- positions.toList) yield bddGenerator.theOneBDDFor(pos)
+  }
+
+  /**
+    * Sets the time delta in the individual formula. Note that the delta stored in the
+    * individual formula is a function of the maximal time limit occurring in
+    * the formula, in order to save bits. It is meant to be overridden by each
+    * formula class if the formula contains time constraints.
+    *
+    * @param actualDelta the actual difference in time between the timestamp of
+    *                    the previous event and the current event.
+    */
+
+  def setTime(actualDelta: Int) {}
+
+  /**
+    * Returns the True BDD if the Delta time (the time difference between the
+    * time stamp of the current event and the time stamp of the previous event)
+    * is less than the time limit passed as argument, otherwise the False BDD
+    * is returned.
+    *
+    * @param timeLimit the timelimit (small delta) occuring as part of a temporal
+    *                  operator in the property being evaluated.
+    * @return the True or False BDD, depending on whether the time passed since last
+    *         event is less than the argument time value or not.
+    */
+
+  def deltaLessThanTimeLimit(timeLimit: Int): BDD = {
+    if (monitor.deltaTime < timeLimit)
+      bddGenerator.True
+    else
+      bddGenerator.False
+  }
+
+  /**
     * Declares all variables (each identified by a name) in a formula.
     * This includes initializing the BDD generator, which is stored in
     * <code>bddGenerator</code>, and initializing <code>True</code> and
     * <code>False</code>. The result returned is a list of the Variable objects.
+    * In addition BDD variables are allocated for keeping track of time in case
+    * the property contains timed temporal operators. In this case `bitsPerTimeVar > 0`.
     *
-    * @param variables the (name,bounded) pairs for variables in a formula.
+    * @param variables      the (name,bounded) pairs for variables in a formula.
+    * @param bitsPerTimeVar the number of bits to be allocated per time variable.
+    *                       This number is `0` if the property does not contain
+    *                       timed temporal operators.
     * @return a list of Variable objects, one for each variable.
     */
 
-  def declareVariables(variables: (String, Boolean)*): List[Variable] = {
+  def declareVariables(variables: (String, Boolean)*)(bitsPerTimeVar: Int): List[Variable] = {
     val variableList = variables.toList
     val nameList: List[String] = variableList.map(_._1)
     val varsAndBitsPerVar = variableList.map {
       case (n, b) => (n, b, Options.BITS)
     }
-    bddGenerator = new BDDGenerator(this)(varsAndBitsPerVar)
+    bddGenerator = new BDDGenerator(this)(varsAndBitsPerVar, bitsPerTimeVar)
     bddGenerator.initializeVariables()
     nameList.map(bddGenerator.varMap(_))
   }
@@ -965,28 +1155,44 @@ abstract class Formula(val monitor: Monitor) {
 
 
 /*
-  prop p : Forall x . r(x) -> (Exists y . !q(y) S P p(y)) 
+  prop commands : Forall m . suc(m) -> ExistsTimeGT . true S[>10] dis(m) 
 */
 
-class Formula_p(monitor: Monitor) extends Formula(monitor) {
+class Formula_commands(monitor: Monitor) extends Formula(monitor) {
           
-  val var_x :: var_y :: Nil = declareVariables(("x",false), ("y",false))
-
   override def evaluate(): Boolean = {
     // assignments1 (leaf nodes that are not rule calls):
-      now(2) = build("r")(V("x"))
-      now(6) = build("q")(V("y"))
-      now(8) = build("p")(V("y"))
+      now(2) = build("suc")(V("m"))
+      now(6) = build("dis")(V("m"))
     // assignments2 (rule nodes excluding what is below @ and excluding leaf nodes):
     // assignments3 (rule calls):
     // assignments4 (the rest of rules that are below @ and excluding leaf nodes):
     // assignments5 (main formula excluding leaf nodes):
-      now(5) = now(6).not()
-      now(7) = now(8).or(pre(7))
-      now(4) = now(7).or(now(5).and(pre(4)))
-      now(3) = now(4).exist(var_y.quantvar)
+      now(5) = bddGenerator.True
+      now(4) = 
+((pre(3).not().or(now(5).not())).and(now(6)).and(zeroTime)).or(
+  now(5)
+  .and(pre(4))
+  .and(DeltaBDD)
+  .and(limitMap(10))
+  .and(gtConst(tBDDListHighToLow, lBDDListHighToLow).ite(
+     uMap(10),
+     addConst(tBDDList, uBDDList, dBDDList, cBDDList)
+   ))
+   .exist(var_t_quantvar)
+   .exist(var_d_quantvar)
+   .exist(var_c_quantvar)
+   .exist(var_l_quantvar)
+   .replace(u_to_t_map)
+)
+      now(3) = 
+now(4)
+.and(limitMap(10))
+.and(gtConst(tBDDListHighToLow, lBDDListHighToLow))
+.exist(var_l_quantvar)
+.exist(var_t_quantvar)
       now(1) = now(2).not().or(now(3))
-      now(0) = now(1).forAll(var_x.quantvar)
+      now(0) = now(1).forAll(var_m.quantvar)
 
     debugMonitorState()
 
@@ -999,39 +1205,99 @@ class Formula_p(monitor: Monitor) extends Formula(monitor) {
     !error
   }
 
-  varsInRelations = Set()
-  val indices: List[Int] = List(4,7)
+  val var_m :: Nil = declareVariables(("m",false))(5)
 
-  pre = Array.fill(9)(bddGenerator.False)
-  now = Array.fill(9)(bddGenerator.False)
+// Declarations related to timed properties:
+
+  val startTimeVar : Int = 1 * Options.BITS
+  val offsetTimeVar : Int = 5
+
+  val (sBegin,sEnd) = (startTimeVar,startTimeVar + offsetTimeVar - 1)
+  val (uBegin,uEnd) = (sEnd + 1, sEnd + offsetTimeVar)
+  val (dBegin,dEnd) = (uEnd + 1, uEnd + offsetTimeVar)
+  val (cBegin,cEnd) = (dEnd + 1, dEnd + offsetTimeVar)
+  val (lBegin,lEnd) = (cEnd + 1, cEnd + offsetTimeVar)
+
+  val tPosArray = (sBegin to sEnd).toArray
+  val uPosArray = (uBegin to uEnd).toArray
+  val dPosArray = (dBegin to dEnd).toArray
+  val cPosArray = (cBegin to cEnd).toArray
+  val lPosArray = (lBegin to lEnd).toArray
+
+  val tBDDList = generateBDDList(tPosArray)
+  val uBDDList = generateBDDList(uPosArray)
+  val dBDDList = generateBDDList(dPosArray)
+  val cBDDList = generateBDDList(cPosArray)
+  val lBDDList = generateBDDList(lPosArray)
+
+  val tBDDListHighToLow = tBDDList.reverse
+  val uBDDListHighToLow = uBDDList.reverse
+  val lBDDListHighToLow = lBDDList.reverse
+
+  val tPosArrayHighToLow = tPosArray.reverse
+  val uPosArrayHighToLow = uPosArray.reverse
+  val dPosArrayHighToLow = dPosArray.reverse
+  val lPosArrayHighToLow = lPosArray.reverse
+
+  val var_t_quantvar : BDD = bddGenerator.getQuantVars(tPosArray)
+  val var_d_quantvar : BDD = bddGenerator.getQuantVars(dPosArray)
+  val var_c_quantvar : BDD = bddGenerator.getQuantVars(cPosArray)
+  val var_l_quantvar : BDD = bddGenerator.getQuantVars(lPosArray)
+
+  val u_to_t_map = bddGenerator.B.makePair()
+  for ((u,t) <- uPosArray.zip(tPosArray)) {
+    u_to_t_map.set(u,t)
+  }
+
+  val zeroTime : BDD = bddGenerator.B.buildCube(0,tPosArrayHighToLow)
+
+  val limitMap : Map[Int,BDD] =
+    Map(
+          10 -> bddGenerator.B.buildCube(10,lPosArrayHighToLow)
+    )
+
+  val uMap: Map[Int, BDD] =
+    Map(
+          10 -> bddGenerator.B.buildCube(10 + 1,uPosArrayHighToLow)
+    )
+
+  val maxTimeLimit = 10 + 1
+  var DeltaBDD : BDD = null
+
+  override def setTime(actualDelta: Int) {
+    val reducedDelta = scala.math.min(actualDelta,maxTimeLimit)
+    DeltaBDD = bddGenerator.B.buildCube(reducedDelta,dPosArrayHighToLow)
+  }
+
+// End of declarations related to timed properties
+
+  varsInRelations = Set()
+  val indices: List[Int] = List(4)
+
+  pre = Array.fill(7)(bddGenerator.False)
+  now = Array.fill(7)(bddGenerator.False)
 
   txt = Array(
-    "Forall x . r(x) -> (Exists y . !q(y) S P p(y))",
-      "r(x) -> (Exists y . !q(y) S P p(y))",
-      "r(x)",
-      "Exists y . !q(y) S P p(y)",
-      "!q(y) S P p(y)",
-      "!q(y)",
-      "q(y)",
-      "P p(y)",
-      "p(y)"
+    "Forall m . suc(m) -> ExistsTimeGT . true S[>10] dis(m)",
+      "suc(m) -> ExistsTimeGT . true S[>10] dis(m)",
+      "suc(m)",
+      "ExistsTimeGT . true S[>10] dis(m)",
+      "true S[>10] dis(m)",
+      "true",
+      "dis(m)"
   )
 
   debugMonitorState()
 }
         
-
-
 /* The specialized Monitor for the provided properties. */
 
 class PropertyMonitor extends Monitor {
-  def eventsInSpec: Set[String] = Set("r","q","p")
+  def eventsInSpec: Set[String] = Set("suc","dis")
 
-  formulae ++= List(new Formula_p(this))
+  formulae ++= List(new Formula_commands(this))
 }
       
-
-
 object TraceMonitor {
   def main(args: Array[String]): Unit = {
     if (1 <= args.length && args.length <= 3) {

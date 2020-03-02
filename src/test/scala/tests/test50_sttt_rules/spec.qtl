@@ -1,0 +1,9 @@
+
+prop telemetry0:
+  Forall x .
+    (Exists d . telem(x,d))
+    ->
+    (Exists f . (!close(x) S open(x,f)))
+
+
+

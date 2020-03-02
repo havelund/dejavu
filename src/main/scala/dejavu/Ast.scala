@@ -205,10 +205,12 @@ case class Spec(properties: List[Property]) {
              |  val cBDDList = generateBDDList(cPosArray)
              |  val lBDDList = generateBDDList(lPosArray)
              |
+             |  val tBDDListHighToLow = tBDDList.reverse
              |  val uBDDListHighToLow = uBDDList.reverse
              |  val lBDDListHighToLow = lBDDList.reverse
              |
              |  val tPosArrayHighToLow = tPosArray.reverse
+             |  val uPosArrayHighToLow = uPosArray.reverse
              |  val dPosArrayHighToLow = dPosArray.reverse
              |  val lPosArrayHighToLow = lPosArray.reverse
              |
@@ -228,12 +230,22 @@ case class Spec(properties: List[Property]) {
         val timeLimits = LTL.timeLimits.toList.map { case limit =>
           s"$limit -> bddGenerator.B.buildCube($limit,lPosArrayHighToLow)"
         }
+
+        val timeLimitsPlusOne = LTL.timeLimits.toList.map { case limit =>
+          s"$limit -> bddGenerator.B.buildCube($limit + 1,uPosArrayHighToLow)"
+        }
+
         val maxTimeLimit = LTL.timeLimits.max
 
         writeln(
           s"""  val limitMap : Map[Int,BDD] =
              |    Map(
              |      ${timeLimits.mkString("    ",",\n    ","")}
+             |    )
+             |
+             |  val uMap: Map[Int, BDD] =
+             |    Map(
+             |      ${timeLimitsPlusOne.mkString("    ",",\n    ","")}
              |    )
              |
              |  val maxTimeLimit = $maxTimeLimit + 1
@@ -1915,6 +1927,185 @@ case class SinceTimeLE(ltl1: LTL, timeLimit: Int, ltl2: LTL) extends LTL {
   }
 }
 
+case class ZinceTimeLE(ltl1: LTL, timeLimit: Int, ltl2: LTL) extends LTL {
+
+  override def setBelowPrevious(): LTL = {
+    isBelowPrevious = true
+    ltl1.setBelowPrevious()
+    ltl2.setBelowPrevious()
+    this
+  }
+
+  override def checkForm(env: Environment): Unit = {
+    ltl1.checkForm(env)
+    ltl2.checkForm(env)
+  }
+
+  override def getQuantifiedVariables: List[(String, Boolean)] =
+    ltl1.getQuantifiedVariables ++ ltl2.getQuantifiedVariables
+
+  override def getFreeVariables: Set[String] = ltl1.getFreeVariables.union(ltl2.getFreeVariables)
+
+  override def getPredicates: Set[String] = ltl1.getPredicates.union(ltl2.getPredicates)
+
+  override def getPredicateTerms: Set[Pred] = ltl1.getPredicateTerms.union(ltl2.getPredicateTerms)
+
+  override def expandMacros(macros: MacroMap): LTL = {
+    val ltl1Expanded = ltl1.expandMacros(macros)
+    val ltl2Expanded = ltl2.expandMacros(macros)
+    ZinceTimeLE(ltl1Expanded, timeLimit, ltl2Expanded)
+  }
+
+  override def renameQuantVars(): LTL = {
+    val ltl1Renamed = ltl1.renameQuantVars()
+    val ltl2Renamed = ltl2.renameQuantVars()
+    ZinceTimeLE(ltl1Renamed, timeLimit, ltl2Renamed)
+  }
+
+  override def substitute(subst: Substitution): LTL = {
+    val ltl1Renamed = ltl1.substitute(subst)
+    val ltl2Renamed = ltl2.substitute(subst)
+    ZinceTimeLE(ltl1Renamed, timeLimit, ltl2Renamed)
+  }
+
+  override def substituteRuleBody(subst: Substitution): LTL = {
+    val ltl1Renamed = ltl1.substituteRuleBody(subst)
+    val ltl2Renamed = ltl2.substituteRuleBody(subst)
+    ZinceTimeLE(ltl1Renamed, timeLimit, ltl2Renamed)
+  }
+
+  override def translate(): Int = {
+    super.translate()
+    val index1 = ltl1.translate()
+    val index2 = ltl2.translate()
+    LTL.timeLimits += timeLimit
+    LTL.assign(index)(
+      s"""
+         |now($index1).and(
+         |  (pre($index2)
+         |   .and(deltaLessThanTimeLimit($timeLimit))
+         |   .and(zeroTime)
+         |   .and(DeltaBDD)
+         |   .and(addConst(tBDDList, uBDDList, dBDDList, cBDDList))
+         |   .exist(var_t_quantvar)
+         |   .exist(var_d_quantvar)
+         |   .exist(var_c_quantvar)
+         |   .replace(u_to_t_map)
+         |  ).or(
+         |    pre($index2).not()
+         |    .and(pre($index))
+         |    .and(DeltaBDD)
+         |    .and(limitMap($timeLimit))
+         |    .and(addConst(tBDDList, uBDDList, dBDDList, cBDDList))
+         |    .and(gtConst(uBDDListHighToLow, lBDDListHighToLow).not())
+         |    .exist(var_t_quantvar)
+         |    .exist(var_d_quantvar)
+         |    .exist(var_c_quantvar)
+         |    .exist(var_l_quantvar)
+         |    .replace(u_to_t_map)
+         |  )
+         |)""".stripMargin
+    )
+    LTL.indicesOfPastTimeFormulas ::= index
+    index
+  }
+
+  override def toString: String = s"${bracket(ltl1)} Z[<=$timeLimit] ${bracket(ltl2)}"
+
+  override def toDot: String = {
+    super.toDot +
+      ltl1.toDot +
+      ltl2.toDot +
+      s"  $index -> ${ltl1.index}\n" +
+      s"  $index -> ${ltl2.index}\n"
+  }
+}
+
+case class SinceTimeGT(ltl1: LTL, timeLimit: Int, ltl2: LTL) extends LTL {
+
+  override def setBelowPrevious(): LTL = {
+    isBelowPrevious = true
+    ltl1.setBelowPrevious()
+    ltl2.setBelowPrevious()
+    this
+  }
+
+  override def checkForm(env: Environment): Unit = {
+    ltl1.checkForm(env)
+    ltl2.checkForm(env)
+  }
+
+  override def getQuantifiedVariables: List[(String, Boolean)] =
+    ltl1.getQuantifiedVariables ++ ltl2.getQuantifiedVariables
+
+  override def getFreeVariables: Set[String] = ltl1.getFreeVariables.union(ltl2.getFreeVariables)
+
+  override def getPredicates: Set[String] = ltl1.getPredicates.union(ltl2.getPredicates)
+
+  override def getPredicateTerms: Set[Pred] = ltl1.getPredicateTerms.union(ltl2.getPredicateTerms)
+
+  override def expandMacros(macros: MacroMap): LTL = {
+    val ltl1Expanded = ltl1.expandMacros(macros)
+    val ltl2Expanded = ltl2.expandMacros(macros)
+    SinceTimeGT(ltl1Expanded, timeLimit, ltl2Expanded)
+  }
+
+  override def renameQuantVars(): LTL = {
+    val ltl1Renamed = ltl1.renameQuantVars()
+    val ltl2Renamed = ltl2.renameQuantVars()
+    SinceTimeGT(ltl1Renamed, timeLimit, ltl2Renamed)
+  }
+
+  override def substitute(subst: Substitution): LTL = {
+    val ltl1Renamed = ltl1.substitute(subst)
+    val ltl2Renamed = ltl2.substitute(subst)
+    SinceTimeGT(ltl1Renamed, timeLimit, ltl2Renamed)
+  }
+
+  override def substituteRuleBody(subst: Substitution): LTL = {
+    val ltl1Renamed = ltl1.substituteRuleBody(subst)
+    val ltl2Renamed = ltl2.substituteRuleBody(subst)
+    SinceTimeGT(ltl1Renamed, timeLimit, ltl2Renamed)
+  }
+
+  override def translate(): Int = {
+    super.translate()
+    val index1 = ltl1.translate()
+    val index2 = ltl2.translate()
+    LTL.timeLimits += timeLimit
+    LTL.assign(index)(
+      s"""
+         |((pre(${index - 1}).not().or(now($index1).not())).and(now($index2)).and(zeroTime)).or(
+         |  now($index1)
+         |  .and(pre($index))
+         |  .and(DeltaBDD)
+         |  .and(limitMap($timeLimit))
+         |  .and(gtConst(tBDDListHighToLow, lBDDListHighToLow).ite(
+         |     uMap($timeLimit),
+         |     addConst(tBDDList, uBDDList, dBDDList, cBDDList)
+         |   ))
+         |   .exist(var_t_quantvar)
+         |   .exist(var_d_quantvar)
+         |   .exist(var_c_quantvar)
+         |   .exist(var_l_quantvar)
+         |   .replace(u_to_t_map)
+         |)""".stripMargin
+    )
+    LTL.indicesOfPastTimeFormulas ::= index
+    index
+  }
+
+  override def toString: String = s"${bracket(ltl1)} S[>$timeLimit] ${bracket(ltl2)}"
+
+  override def toDot: String = {
+    super.toDot +
+      ltl1.toDot +
+      ltl2.toDot +
+      s"  $index -> ${ltl1.index}\n" +
+      s"  $index -> ${ltl2.index}\n"
+  }
+}
+
 case class Previous(ltl: LTL) extends LTL {
 
   override def setBelowPrevious(): LTL = {
@@ -2258,6 +2449,69 @@ case class ExistsTime(ltl: LTL) extends LTL {
   }
 
   override def toString: String = s"ExistsTime . ${bracket(ltl)}"
+
+  override def toDot: String = {
+    super.toDot +
+      ltl.toDot +
+      s"  $index -> ${ltl.index}\n"
+  }
+}
+
+case class ExistsTimeGT(ltl: LTL, timeLimit: Int) extends LTL {
+
+  override def setBelowPrevious(): LTL = {
+    isBelowPrevious = true
+    ltl.setBelowPrevious()
+    this
+  }
+
+  override def checkForm(env: Environment): Unit = {
+    ltl.checkForm(env)
+  }
+
+  override def getQuantifiedVariables: List[(String, Boolean)] = ltl.getQuantifiedVariables
+
+  override def getFreeVariables: Set[String] = ltl.getFreeVariables
+
+  override def getPredicates: Set[String] = ltl.getPredicates
+
+  override def getPredicateTerms: Set[Pred] = ltl.getPredicateTerms
+
+  override def expandMacros(macros: MacroMap): LTL = {
+    val ltlExpanded = ltl.expandMacros(macros)
+    ExistsTimeGT(ltlExpanded, timeLimit)
+  }
+
+  override def renameQuantVars(): LTL = {
+    ExistsTimeGT(ltl.renameQuantVars(), timeLimit)
+  }
+
+  override def substitute(subst: Substitution): LTL = {
+    val ltlRenamed = ltl.substitute(subst)
+    ExistsTimeGT(ltlRenamed, timeLimit)
+  }
+
+  override def substituteRuleBody(subst: Substitution): LTL = {
+    val ltlRenamed = ltl.substituteRuleBody(subst)
+    ExistsTimeGT(ltlRenamed, timeLimit)
+  }
+
+  override def translate(): Int = {
+    super.translate()
+    val index1 = ltl.translate()
+
+    LTL.assign(index)(
+      s"""
+         |now($index1)
+         |.and(limitMap($timeLimit))
+         |.and(gtConst(tBDDListHighToLow, lBDDListHighToLow))
+         |.exist(var_l_quantvar)
+         |.exist(var_t_quantvar)""".stripMargin)
+
+    index
+  }
+
+  override def toString: String = s"ExistsTimeGT . ${bracket(ltl)}"
 
   override def toDot: String = {
     super.toDot +

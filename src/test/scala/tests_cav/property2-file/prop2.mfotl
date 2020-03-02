@@ -1,3 +1,0 @@
-
-FORALL f . close(f) IMPLIES (EXISTS m . PREVIOUS (NOT close(f) SINCE open(f,m)))
-

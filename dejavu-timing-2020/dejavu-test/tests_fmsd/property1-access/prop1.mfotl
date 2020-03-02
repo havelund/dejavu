@@ -1,8 +1,0 @@
-
-FORALL x. FORALL y.  
-  access(x,y) IMPLIES 
-    (
-      (NOT logout(x) SINCE login(x))
-        AND 
-      (NOT close(y) SINCE open(y))
-    )

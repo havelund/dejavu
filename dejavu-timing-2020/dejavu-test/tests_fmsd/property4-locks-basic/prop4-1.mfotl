@@ -1,3 +1,0 @@
-FORALL t. FORALL l . 
-  sleep(t) IMPLIES NOT (NOT rel(t,l) SINCE acq(t,l))
-

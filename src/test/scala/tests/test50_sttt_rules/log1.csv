@@ -1,0 +1,6 @@
+open,a,145
+open,b,440
+telem,a,42
+telem,b,84
+close,a
+close,b

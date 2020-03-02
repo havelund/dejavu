@@ -1,3 +1,0 @@
-FORALL t. FORALL l . 
-  acq(t,l) IMPLIES NOT EXISTS s . PREVIOUS (NOT rel(s,l) SINCE acq(s,l))
-

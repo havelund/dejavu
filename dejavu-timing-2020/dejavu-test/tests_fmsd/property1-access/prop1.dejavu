@@ -1,6 +1,0 @@
-prop access :
-  Forall user . Forall file .
-    access(user,file) ->
-      [login(user),logout(user))
-        &
-      [open(file),close(file))

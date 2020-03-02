@@ -1,0 +1,3 @@
+
+prop commands :
+  Forall m . dis(m) -> ! (!suc(m) Z[<=10] dis(m))

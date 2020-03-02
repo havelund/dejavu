@@ -1,2 +1,0 @@
-FORALL t. FORALL l . 
-  rel(t,l) IMPLIES PREVIOUS (NOT rel(t,l) SINCE acq(t,l))

@@ -1,0 +1,3 @@
+
+prop commands :
+  Forall m . suc(m) -> true S[>10] dis(m)

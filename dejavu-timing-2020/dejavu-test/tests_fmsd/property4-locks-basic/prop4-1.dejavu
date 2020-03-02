@@ -1,9 +1,0 @@
-
-// Requirement:
-// - A thread going to sleep should not hold any locks.
-// - At most one thread can acquire a lock at a time.
-// - A thread can only release a lock it has acquired.
-
-prop sleepSafely :
-  Forall t . Forall l .
-    sleep(t) -> ![acq(t,l),rel(t,l))

@@ -1,5 +1,0 @@
-
-prop commands :
- Forall m .
-    suc(m) ->
-      Exists p . !fail(m) S[<=3] dis(m,p)
