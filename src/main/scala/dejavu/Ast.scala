@@ -2276,6 +2276,238 @@ case class History(ltl: LTL) extends LTL {
   }
 }
 
+case class HistoryLE(ltl: LTL, timeLimit: Int) extends LTL {
+
+  override def setBelowPrevious(): LTL = {
+    isBelowPrevious = true
+    ltl.setBelowPrevious()
+    this
+  }
+
+  override def checkForm(env: Environment): Unit = {
+    ltl.checkForm(env)
+  }
+
+  var rewrite: LTL = Not(ExistsTime(SinceTimeLE(True, timeLimit, Not(ltl))))
+
+  override def getQuantifiedVariables: List[(String, Boolean)] = rewrite.getQuantifiedVariables
+
+  override def getFreeVariables: Set[String] = ltl.getFreeVariables
+
+  override def getPredicates: Set[String] = ltl.getPredicates
+
+  override def getPredicateTerms: Set[Pred] = ltl.getPredicateTerms
+
+  override def expandMacros(macros: MacroMap): LTL = {
+    rewrite = rewrite.expandMacros(macros)
+    this
+  }
+
+  override def renameQuantVars(): LTL = {
+    HistoryLE(ltl.renameQuantVars(), timeLimit)
+  }
+
+  override def substitute(subst: Substitution): LTL = {
+    rewrite = rewrite.substitute(subst)
+    this
+  }
+
+  override def substituteRuleBody(subst: Substitution): LTL = {
+    rewrite = rewrite.substituteRuleBody(subst)
+    this
+  }
+
+  override def translate(): Int = {
+    rewrite.translate()
+    index = rewrite.index // check that this works
+    index
+  }
+
+  // override def toString: String = s"H $ltl"
+
+  override def toString: String = {
+    rewrite.toString
+  }
+
+  override def toDot: String = {
+    rewrite.toDot
+  }
+}
+
+case class HistoryGT(ltl: LTL, timeLimit: Int) extends LTL {
+
+  override def setBelowPrevious(): LTL = {
+    isBelowPrevious = true
+    ltl.setBelowPrevious()
+    this
+  }
+
+  override def checkForm(env: Environment): Unit = {
+    ltl.checkForm(env)
+  }
+
+  var rewrite: LTL = Not(ExistsTimeGT(SinceTimeGT(True, timeLimit, Not(ltl)), timeLimit))
+
+  override def getQuantifiedVariables: List[(String, Boolean)] = rewrite.getQuantifiedVariables
+
+  override def getFreeVariables: Set[String] = ltl.getFreeVariables
+
+  override def getPredicates: Set[String] = ltl.getPredicates
+
+  override def getPredicateTerms: Set[Pred] = ltl.getPredicateTerms
+
+  override def expandMacros(macros: MacroMap): LTL = {
+    rewrite = rewrite.expandMacros(macros)
+    this
+  }
+
+  override def renameQuantVars(): LTL = {
+    HistoryGT(ltl.renameQuantVars(), timeLimit)
+  }
+
+  override def substitute(subst: Substitution): LTL = {
+    rewrite = rewrite.substitute(subst)
+    this
+  }
+
+  override def substituteRuleBody(subst: Substitution): LTL = {
+    rewrite = rewrite.substituteRuleBody(subst)
+    this
+  }
+
+  override def translate(): Int = {
+    rewrite.translate()
+    index = rewrite.index // check that this works
+    index
+  }
+
+  // override def toString: String = s"H $ltl"
+
+  override def toString: String = {
+    rewrite.toString
+  }
+
+  override def toDot: String = {
+    rewrite.toDot
+  }
+}
+
+case class SometimeLE(ltl: LTL, timeLimit: Int) extends LTL {
+
+  override def setBelowPrevious(): LTL = {
+    isBelowPrevious = true
+    ltl.setBelowPrevious()
+    this
+  }
+
+  override def checkForm(env: Environment): Unit = {
+    ltl.checkForm(env)
+  }
+
+  var rewrite: LTL = ExistsTime(SinceTimeLE(True, timeLimit, ltl))
+
+  override def getQuantifiedVariables: List[(String, Boolean)] = rewrite.getQuantifiedVariables
+
+  override def getFreeVariables: Set[String] = ltl.getFreeVariables
+
+  override def getPredicates: Set[String] = ltl.getPredicates
+
+  override def getPredicateTerms: Set[Pred] = ltl.getPredicateTerms
+
+  override def expandMacros(macros: MacroMap): LTL = {
+    rewrite = rewrite.expandMacros(macros)
+    this
+  }
+
+  override def renameQuantVars(): LTL = {
+    SometimeLE(ltl.renameQuantVars(), timeLimit)
+  }
+
+  override def substitute(subst: Substitution): LTL = {
+    rewrite = rewrite.substitute(subst)
+    this
+  }
+
+  override def substituteRuleBody(subst: Substitution): LTL = {
+    rewrite = rewrite.substituteRuleBody(subst)
+    this
+  }
+
+  override def translate(): Int = {
+    rewrite.translate()
+    index = rewrite.index // check that this works
+    index
+  }
+
+  // override def toString: String = s"H $ltl"
+
+  override def toString: String = {
+    rewrite.toString
+  }
+
+  override def toDot: String = {
+    rewrite.toDot
+  }
+}
+
+case class SometimeGT(ltl: LTL, timeLimit: Int) extends LTL {
+
+  override def setBelowPrevious(): LTL = {
+    isBelowPrevious = true
+    ltl.setBelowPrevious()
+    this
+  }
+
+  override def checkForm(env: Environment): Unit = {
+    ltl.checkForm(env)
+  }
+
+  var rewrite: LTL = ExistsTimeGT(SinceTimeGT(True, timeLimit, ltl), timeLimit)
+
+  override def getQuantifiedVariables: List[(String, Boolean)] = rewrite.getQuantifiedVariables
+
+  override def getFreeVariables: Set[String] = ltl.getFreeVariables
+
+  override def getPredicates: Set[String] = ltl.getPredicates
+
+  override def getPredicateTerms: Set[Pred] = ltl.getPredicateTerms
+
+  override def expandMacros(macros: MacroMap): LTL = {
+    rewrite = rewrite.expandMacros(macros)
+    this
+  }
+
+  override def renameQuantVars(): LTL = {
+    SometimeGT(ltl.renameQuantVars(), timeLimit)
+  }
+
+  override def substitute(subst: Substitution): LTL = {
+    rewrite = rewrite.substitute(subst)
+    this
+  }
+
+  override def substituteRuleBody(subst: Substitution): LTL = {
+    rewrite = rewrite.substituteRuleBody(subst)
+    this
+  }
+
+  override def translate(): Int = {
+    rewrite.translate()
+    index = rewrite.index // check that this works
+    index
+  }
+
+  // override def toString: String = s"H $ltl"
+
+  override def toString: String = {
+    rewrite.toString
+  }
+
+  override def toDot: String = {
+    rewrite.toDot
+  }
+}
+
 case class Interval(ltl1: LTL, ltl2: LTL) extends LTL {
 
   override def setBelowPrevious(): LTL = {

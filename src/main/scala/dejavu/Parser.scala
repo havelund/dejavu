@@ -158,8 +158,20 @@ class Parser extends JavaTokenParsers {
       "@" ~ ltlLeaf ^^ {
         case _ ~ ltl => Previous(ltl.setBelowPrevious())
       } |
+      "P" ~ ltTime ~ ltlLeaf ^^ {
+        case _ ~ time ~ ltl => SometimeLE(ltl, time)
+      } |
+      "P" ~ gtTime ~ ltlLeaf ^^ {
+        case _ ~ time ~ ltl => SometimeGT(ltl, time)
+      } |
       "P" ~ ltlLeaf ^^ {
         case _ ~ ltl => Sometime(ltl)
+      } |
+      "H" ~ ltTime ~ ltlLeaf ^^ {
+        case _ ~ time ~ ltl => HistoryLE(ltl, time)
+      } |
+      "H" ~ gtTime ~ ltlLeaf ^^ {
+        case _ ~ time ~ ltl => HistoryGT(ltl, time)
       } |
       "H" ~ ltlLeaf ^^ {
         case _ ~ ltl => History(ltl)
