@@ -7,13 +7,15 @@
        |_____/ \___| |\__,_| \/  \__,_|
                   _/ |                 
                  |__/                  
-                            Now with recursive rules!
+                            First-order past time LTL with recursive rules and time!
  
-        Version 2.0, February 28 - 2019
+        Version 2.1, March 4 - 2020
+
+![MacDown Screenshot](bdd.pdf)
 
 ## Copyright statement
 
-Copyright 2019, by the California Institute of Technology. ALL RIGHTS RESERVED.
+Copyright 2020, by the California Institute of Technology. ALL RIGHTS RESERVED.
 United States Government Sponsorship acknowledged. Any commercial use must be negotiated
 with the Office of Technology Transfer at the California Institute of Technology.
 This software may be subject to U.S. export control laws. By accepting this software,
@@ -23,7 +25,9 @@ before exporting such information to foreign countries or providing access to fo
 
 ## Overview
 
-DejaVu is a program written in Scala for monitoring event streams (traces) against temporal logic formulas. The formulas are written in a first-order past time linear temporal logic, with the addition of macros and recursive rules. An example of a property in its most basic form is the following:
+DejaVu is a program written in Scala for monitoring event streams (traces) against temporal logic formulas. The formulas are written in a first-order past time linear temporal logic, with the addition of macros and recursive rules. The logic also supports reasoning about time.
+
+An example of a property in its most basic form is the following:
 
     prop closeOnlyOpenFiles : forall f . close(f) -> exists m . @ [open(f,m),close(f))
 
@@ -77,6 +81,23 @@ the form:
     sell,chair
 
 with **no leading spaces** would mean the four events:
+
+    list(chair,500)
+    bid(chair,700)
+    bid(chair,650)
+    sell(chair)
+
+In case the log file contains time stamps, the log file **name**! must contain the text `.timed.`. E.g: `log42.timed.csv`. Time stamps (natural numbers) must appear as the last argument to all events. E.g. a timed version of the above trace (with time values in
+the range 1000 ... 1099) is:
+
+    list,chair,500,1010
+    bid,chair,700,1025
+    bid,chair,650,1067
+    sell,chair,1099 
+
+Note that this last time value is not refered to explicitly in events in specifications.
+That is, the events with time in the above CSV format still corresponds to the following
+events in specification format:
 
     list(chair,500)
     bid(chair,700)
@@ -203,12 +224,15 @@ The grammar for the DejaVu temporal logic is as follows.
        | '(' <form> ')'
        | <quantifier> <id> '.' <form>
 
-    <param> ::= <id> | <const>
-    <const> ::= <string> | <integer>
-    <binop> ::= '->' | '|' | '&' | 'S'
-    <unop>  ::= '!' |  '@' | 'P' | 'H'
-    <oper>  ::= '<' | '<=' | '=' | '>' | '>='    
+    <param>  ::= <id> | <const>
+    <const>  ::= <string> | <integer>
+    <binop>  ::= '->' | '|' | '&' | 'S' [<time>] | Z <timeLE>
+    <unop>   ::= '!' |  '@' | 'P' [<time>] | 'H' [<time>] 
+    <oper>   ::= '<' | '<=' | '=' | '>' | '>='    
     <quantifier> ::= 'exists' | 'forall' | 'Exists' | 'Forall'
+    <time>   ::= <timeLE> | <timeGT>
+    <timeLE> ::= '[<=' <number> ']'
+    <timeGT> ::= '[>' <number> ']'    
 
 ### Event, Macro, and Property Definitions
 
@@ -237,11 +261,18 @@ The different formulas ``<form>`` have the following intuitive meaning:
     p | q           : p or q
     p & q           : p and q
     p S q           : p since q (q was true in the past, and since then, including that point in time, p has been true) 
+    p S[<=d] q      : p since q but where q occurred within d time units
+    p S[>d] q       : p since q but where q occurred earlier than d time units
+    p Z[<=d] q      : p since q but where q did not occur at the current time
     [p,q)           : interval notation equivalent to: !q S p. This form may be easier to read.
     ! p             : not p
     @ p             : in previous state p is true
     P p             : in some previous state p is true
+    P[<=d] p        : in some previous state within d time units p is true
+    P[>d] p         : in some previous state earlier than d time units p is true
     H p             : in all previous states p is true
+    H[<=d] p        : in all previous states within d time units p is true
+    H[>d] p         : in all previous states earlier than d time units p is true
     x op k          : x is related to variable or constant k via op. E.g.: x < 10, x <= y, x = y, x >= 10, x > z   
     // -- quantification over seen values in the past, see (*) below:
     exists x . p(x) : there exists an x such that seen(x) and p(x) 
@@ -271,6 +302,19 @@ back to thread `x`). For this we need to compute a transitive closure of spawnin
           | Exists z . (@spawned(x,z) & spawn(z,y))
 
 The property states that if there is a `report(y,x,d)` event (thread `y` reporting data `d` back to thread `x`), then `spawned(x,y)` must hold, defined as follows: either `spawned(x,y)` held in the previous state, or there is a `spawn(x,y)` in the current state, or, the interesting case: `spawned(x,z)` held in the previous state for some `z`, and  `spawn(z,y)` holds in the current state. This last disjunct forms the transitive closure.
+
+### Time
+
+Timing properties can be expressed using natural numbers as constraints. Examples formulas concerning commands being
+dispatched `dis(m)` and succeeding `suc(m)` are:
+
+    Forall m . suc(m) -> true S[<=3] dis(m) // succeeding command must have been dispatched within 3 time units 
+    Forall m . suc(m) -> true S[>3] dis(m) // dispatch earlier than 3 time units
+    Forall m . dis(m) -> ! (true Z[<=3] dis(m)) // if command dispatched, not dispatched before! within 3
+    Forall m . suc(m) -> P[<=3] dis(m) // succeeding command must have been dispatched within 3 time units 
+    Forall m . suc(m) -> P[>3] dis(m) // dispatch earlier than 3 time units
+    Forall m . suc(m) -> H[<=3] !dis(m) // for a succeeding command no dispatch within 3 time units before
+    Forall m . suc(m) -> H[>3] !dis(m) // no dispatch earlier than 3 time units
 
 ## Further Examples Of DejaVu Properties
 
