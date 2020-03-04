@@ -11,7 +11,6 @@
  
         Version 2.1, March 4 - 2020
 
-![MacDown Screenshot](bdd.pdf)
 
 ## Copyright statement
 
