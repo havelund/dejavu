@@ -11,7 +11,8 @@
  
         Version 2.1, March 4 - 2020
 
-
+![Alt Image Text](bdd.pdf "Optional Title")
+  
 ## Copyright statement
 
 Copyright 2020, by the California Institute of Technology. ALL RIGHTS RESERVED.
@@ -86,6 +87,8 @@ with **no leading spaces** would mean the four events:
     bid(chair,650)
     sell(chair)
 
+**The log file and time**
+
 In case the log file contains time stamps, the log file **name**! must contain the text `.timed.`. E.g: `log42.timed.csv`. Time stamps (natural numbers) must appear as the last argument to all events. E.g. a timed version of the above trace (with time values in
 the range 1000 ... 1099) is:
 
@@ -102,6 +105,9 @@ events in specification format:
     bid(chair,700)
     bid(chair,650)
     sell(chair)
+
+In case the log file is not timed (as described just above), time is considered as always being 0.
+One can still check timed properties against such a log, but of course it makes little sense.
 
 **The bits per variable** (``<bitsPerVariable>``) indicates how many bits are assigned to each variable in the BDDs. This parameter is optional with the default value being 20. If the number is too low an error message will be issued during analysis as explained below. A too high number can have impact on the efficiency of the algorithm. Note that the number of values representable by N bits is 2^N, so one in general does not need very large numbers.  
 
