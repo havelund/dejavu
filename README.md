@@ -11,7 +11,6 @@
  
         Version 2.1, March 4 - 2020
 
-![Alt Image Text](bdd.pdf "Optional Title")
   
 ## Copyright statement
 
