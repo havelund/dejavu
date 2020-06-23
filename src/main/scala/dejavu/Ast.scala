@@ -2393,7 +2393,6 @@ case class HistoryGT(ltl: LTL, timeLimit: Int) extends LTL {
 }
 
 case class SometimeLE(ltl: LTL, timeLimit: Int) extends LTL {
-
   override def setBelowPrevious(): LTL = {
     isBelowPrevious = true
     ltl.setBelowPrevious()

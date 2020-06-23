@@ -1,0 +1,30 @@
+
+prop noMOBRaces :
+  (
+    CMD_COMPLETE("MOB_NAV_PRM_SET") ->
+    (
+      P[<=10] CMD_DISPATCH("MOB_NAV_PRM_SET")
+      &
+      @(
+        ! ( CMD_COMPLETE("MOB_NAV_PRM_SET") |  Exists msg . TLM_TR_ERROR(msg) )
+        S
+        CMD_DISPATCH("MOB_NAV_PRM_SET")
+      )
+    )
+  )
+
+prop noARMRaces :
+  (
+    CMD_COMPLETE("ARM_PRM_SETDMP") ->
+    (
+      P[<=10] CMD_DISPATCH("ARM_PRM_SETDMP")
+      &
+      @(
+        ! ( CMD_COMPLETE("ARM_PRM_SETDMP") |  Exists msg . TLM_TR_ERROR(msg) )
+        S
+        CMD_DISPATCH("ARM_PRM_SETDMP")
+      )
+    )
+  )
+
+

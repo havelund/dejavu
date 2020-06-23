@@ -1,0 +1,26 @@
+
+prop noProblematicDoubleBoot:
+  ! Exists i .
+    (
+      boot_e(i) &
+      !P[<=2] boot_s(i) &
+        @ (
+        !boot_e(i) S
+          (
+            boot_s(i) &
+            (
+              !boot_e(i)
+              S[<=5]
+              (
+                boot_e(i) &
+                !P[<=2] boot_s(i) &
+                @ (
+                  !boot_e(i)
+                  S
+                  boot_s(i)
+                )
+              )
+            )
+         )
+        )
+    )
