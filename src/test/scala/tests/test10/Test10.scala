@@ -41,9 +41,9 @@ class Test10 extends TestCase {
   @Test def test5(): Unit = {
     Verify(spec, log5, "3", "debug")
     checkResults(
-      10 -- 1,
       10 -- 2,
       10 -- 3,
+      10 -- 1,
       13
     )
   }

@@ -32,7 +32,7 @@ class Test18 extends TestCase {
 
   @Test def test2_1(): Unit = {
     Verify(spec2,log1, "3")
-    checkResults(12 -- 1,12 -- 2,14 -- 3)
+    checkResults(12 -- 2,12 -- 1,14 -- 3)
   }
 
   // --- spec 3: ---
@@ -46,7 +46,7 @@ class Test18 extends TestCase {
 
   @Test def test4_1(): Unit = {
     Verify(spec4,log1, "3")
-    checkResults(12 -- 1,12 -- 2,14 -- 3)
+    checkResults(12 -- 2,12 -- 1,14 -- 3)
   }
 
   // -- spec 5: --
