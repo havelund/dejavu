@@ -452,7 +452,7 @@ The rule `closed(x)` is defined as a disjunction between three alternatives. The
 
 - Experiments for ATVA 2020 paper "_First-Order Timed Runtime Verification using BDDs_": [experiments](https://github.com/havelund/dejavu/tree/master/src/test/scala/tests_atva2020)  
 
-- Experiments for STTT journal 2020 paper "_An Extension of LTL with Rules and itsApplication to Runtime Verification_":
+- Experiments for STTT journal 2020 paper "_An Extension of LTL with Rules and its Application to Runtime Verification_":
   * [Wolper's property](https://github.com/havelund/dejavu/tree/master/src/test/scala/tests/test39_formalise_wolper)
   * [Wolper's property as state machine](https://github.com/havelund/dejavu/tree/master/src/test/scala/tests/test41_formalise_statemachine)
   * [task spawning](https://github.com/havelund/dejavu/tree/master/src/test/scala/tests/test42_formalise_taskspawning)
