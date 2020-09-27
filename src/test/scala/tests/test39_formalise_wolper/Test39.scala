@@ -44,6 +44,8 @@ class Test39 extends TestCase {
     checkResults(102001)
   }
 
+  // STTT trace T1:
+  // ==============
   // val (repeat, repeat_toggle, repeat_telem) = (100,1000,10) // 1_000k
   // Processed 1200001 events
   // Elapsed trace analysis time: 3.274s
@@ -52,6 +54,8 @@ class Test39 extends TestCase {
     checkResults(1200001)
   }
 
+  // STTT trace T2:
+  // ==============
   // val (repeat, repeat_toggle, repeat_telem) = (1000,100,50) // 5_000k
   // Processed 5200001 events
   // Elapsed trace analysis time: 7.102s
@@ -60,6 +64,8 @@ class Test39 extends TestCase {
     checkResults(5200001)
   }
 
+  // STTT trace T3:
+  // ==============
   // val (repeat, repeat_toggle, repeat_telem) = (1000,100,100) // 10_000k
   // Processed 10200001 events
   // Elapsed trace analysis time: 12.777s

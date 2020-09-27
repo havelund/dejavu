@@ -446,6 +446,17 @@ The same property can altermatively be expressed using two rules, more closely r
 
 The rule `closed(x)` is defined as a disjunction between three alternatives. The first alternative states that this predicate is true if we are in the initial state (the only state where `@true` is false), and there is no `toggle(x)` event. The next alternative states that `closed(x)` was true in the previous state and there is no `toggle(x)` event now. The third alternative states that we in the previous state were in the `open(x)` state and we observe a `toggle(x)` event. Similarly for the `open(x)` rule.
 
+## Experiments for publications
+
+- Experiments for FMSD journal paper 2018 "_First-Order Temporal Logic Monitoring with BDDs_": [experiments](https://github.com/havelund/dejavu/tree/master/src/test/scala/tests_fmsd) 
+
+- Experiments for ATVA 2020 paper "_First-Order Timed Runtime Verification using BDDs_": [experiments](https://github.com/havelund/dejavu/tree/master/src/test/scala/tests_atva2020)  
+
+- Experiments for STTT journal 2020 paper "_An Extension of LTL with Rules and itsApplication to Runtime Verification_":
+  * [Wolper's property](https://github.com/havelund/dejavu/tree/master/src/test/scala/tests/test39_formalise_wolper)
+  * [Wolper's property as state machine](https://github.com/havelund/dejavu/tree/master/src/test/scala/tests/test41_formalise_statemachine)
+  * [task spawning](https://github.com/havelund/dejavu/tree/master/src/test/scala/tests/test42_formalise_taskspawning)
+
 ## Contributors
 
 * [Klaus Havelund](http://www.havelund.com), Jet Propulsion Laboratory/NASA, USA

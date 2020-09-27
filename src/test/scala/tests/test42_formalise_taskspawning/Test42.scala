@@ -27,21 +27,25 @@ class Test42 extends TestCase {
 
   // threads: how many threads initially spawned by main program
   // repeat: how many times new threads from new threads are spawned
-  // number of spawened threads correspond to number of events
+  // number of spawned threads correspond to number of events
 
+  // STTT trace T4:
+  // ==============
   // val (threads, repeat) = (50,100) // 10k
-  // count = 9899
   // spawns = 4949
-  // Elapsed total time: 42.681s
+  // Processed 9899 events
+  // Elapsed trace analysis time: 34.67s
 
   @Test def test3(): Unit = {
     Verify(spec,biglog10k)
     checkResults(9899)
   }
 
+  // STTT trace T5:
+  // ==============
   // val (threads, repeat) = (100,100) //20k
-  // count = 19999
   // spawns = 9999
+  // Processed 19999 events
   // Elapsed trace analysis time: 127.567s
 
   // 2m10s
@@ -51,9 +55,11 @@ class Test42 extends TestCase {
     checkResults(19999)
   }
 
+  // STTT trace T6:
+  // ==============
   // val (threads, repeat) = (100,200) // 40k
-  // count = 39799
   // spawns = 19899
+  // Processed 39799 events
   // Elapsed trace analysis time: 572.443s
 
   // 8m52s
