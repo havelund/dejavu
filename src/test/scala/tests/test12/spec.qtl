@@ -1,2 +1,2 @@
 
-prop p : Exists x . Exists y . P a(x) & P b(y) & P LT(x,y)
+prop p : Exists x . Exists y . (P a(x) & P b(y) & P LT(x,y))

@@ -1155,44 +1155,68 @@ abstract class Formula(val monitor: Monitor) {
 
 
 /*
-  prop commands : Forall m . suc(m) -> ExistsTimeGT . true S[>10] dis(m) 
+  prop P4 : Forall A . Forall B . Forall C . Forall da . Forall db . Forall dc . ((P (end(B) & @ P (end(A) & @ P (begin(B,db) & @ P begin(A,da)))) & P (end(C) & @ P (end(B) & @ P (begin(C,dc) & @ P begin(B,db))))) -> !P (end(C) & @ P (end(A) & @ P (begin(C,dc) & @ P begin(A,da))))) 
 */
 
-class Formula_commands(monitor: Monitor) extends Formula(monitor) {
+class Formula_P4(monitor: Monitor) extends Formula(monitor) {
           
   override def evaluate(): Boolean = {
     // assignments1 (leaf nodes that are not rule calls):
-      now(2) = build("suc")(V("m"))
-      now(6) = build("dis")(V("m"))
+      now(10) = build("end")(V("B"))
+      now(14) = build("end")(V("A"))
+      now(18) = build("begin")(V("B"),V("db"))
+      now(21) = build("begin")(V("A"),V("da"))
+      now(24) = build("end")(V("C"))
+      now(28) = build("end")(V("B"))
+      now(32) = build("begin")(V("C"),V("dc"))
+      now(35) = build("begin")(V("B"),V("db"))
+      now(39) = build("end")(V("C"))
+      now(43) = build("end")(V("A"))
+      now(47) = build("begin")(V("C"),V("dc"))
+      now(50) = build("begin")(V("A"),V("da"))
     // assignments2 (rule nodes excluding what is below @ and excluding leaf nodes):
     // assignments3 (rule calls):
     // assignments4 (the rest of rules that are below @ and excluding leaf nodes):
     // assignments5 (main formula excluding leaf nodes):
-      now(5) = bddGenerator.True
-      now(4) = 
-((pre(3).not().or(now(5).not())).and(now(6)).and(zeroTime)).or(
-  now(5)
-  .and(pre(4))
-  .and(DeltaBDD)
-  .and(limitMap(10))
-  .and(gtConst(tBDDListHighToLow, lBDDListHighToLow).ite(
-     uMap(10),
-     addConst(tBDDList, uBDDList, dBDDList, cBDDList)
-   ))
-   .exist(var_t_quantvar)
-   .exist(var_d_quantvar)
-   .exist(var_c_quantvar)
-   .exist(var_l_quantvar)
-   .replace(u_to_t_map)
-)
-      now(3) = 
-now(4)
-.and(limitMap(10))
-.and(gtConst(tBDDListHighToLow, lBDDListHighToLow))
-.exist(var_l_quantvar)
-.exist(var_t_quantvar)
-      now(1) = now(2).not().or(now(3))
-      now(0) = now(1).forAll(var_m.quantvar)
+      now(20) = now(21).or(pre(20))
+      now(19) = pre(20)
+      now(17) = now(18).and(now(19))
+      now(16) = now(17).or(pre(16))
+      now(15) = pre(16)
+      now(13) = now(14).and(now(15))
+      now(12) = now(13).or(pre(12))
+      now(11) = pre(12)
+      now(9) = now(10).and(now(11))
+      now(8) = now(9).or(pre(8))
+      now(34) = now(35).or(pre(34))
+      now(33) = pre(34)
+      now(31) = now(32).and(now(33))
+      now(30) = now(31).or(pre(30))
+      now(29) = pre(30)
+      now(27) = now(28).and(now(29))
+      now(26) = now(27).or(pre(26))
+      now(25) = pre(26)
+      now(23) = now(24).and(now(25))
+      now(22) = now(23).or(pre(22))
+      now(7) = now(8).and(now(22))
+      now(49) = now(50).or(pre(49))
+      now(48) = pre(49)
+      now(46) = now(47).and(now(48))
+      now(45) = now(46).or(pre(45))
+      now(44) = pre(45)
+      now(42) = now(43).and(now(44))
+      now(41) = now(42).or(pre(41))
+      now(40) = pre(41)
+      now(38) = now(39).and(now(40))
+      now(37) = now(38).or(pre(37))
+      now(36) = now(37).not()
+      now(6) = now(7).not().or(now(36))
+      now(5) = now(6).forAll(var_dc.quantvar)
+      now(4) = now(5).forAll(var_db.quantvar)
+      now(3) = now(4).forAll(var_da.quantvar)
+      now(2) = now(3).forAll(var_C.quantvar)
+      now(1) = now(2).forAll(var_B.quantvar)
+      now(0) = now(1).forAll(var_A.quantvar)
 
     debugMonitorState()
 
@@ -1205,86 +1229,66 @@ now(4)
     !error
   }
 
-  val var_m :: Nil = declareVariables(("m",false))(5)
-
-// Declarations related to timed properties:
-
-  val startTimeVar : Int = 1 * Options.BITS
-  val offsetTimeVar : Int = 5
-
-  val (sBegin,sEnd) = (startTimeVar,startTimeVar + offsetTimeVar - 1)
-  val (uBegin,uEnd) = (sEnd + 1, sEnd + offsetTimeVar)
-  val (dBegin,dEnd) = (uEnd + 1, uEnd + offsetTimeVar)
-  val (cBegin,cEnd) = (dEnd + 1, dEnd + offsetTimeVar)
-  val (lBegin,lEnd) = (cEnd + 1, cEnd + offsetTimeVar)
-
-  val tPosArray = (sBegin to sEnd).toArray
-  val uPosArray = (uBegin to uEnd).toArray
-  val dPosArray = (dBegin to dEnd).toArray
-  val cPosArray = (cBegin to cEnd).toArray
-  val lPosArray = (lBegin to lEnd).toArray
-
-  val tBDDList = generateBDDList(tPosArray)
-  val uBDDList = generateBDDList(uPosArray)
-  val dBDDList = generateBDDList(dPosArray)
-  val cBDDList = generateBDDList(cPosArray)
-  val lBDDList = generateBDDList(lPosArray)
-
-  val tBDDListHighToLow = tBDDList.reverse
-  val uBDDListHighToLow = uBDDList.reverse
-  val lBDDListHighToLow = lBDDList.reverse
-
-  val tPosArrayHighToLow = tPosArray.reverse
-  val uPosArrayHighToLow = uPosArray.reverse
-  val dPosArrayHighToLow = dPosArray.reverse
-  val lPosArrayHighToLow = lPosArray.reverse
-
-  val var_t_quantvar : BDD = bddGenerator.getQuantVars(tPosArray)
-  val var_d_quantvar : BDD = bddGenerator.getQuantVars(dPosArray)
-  val var_c_quantvar : BDD = bddGenerator.getQuantVars(cPosArray)
-  val var_l_quantvar : BDD = bddGenerator.getQuantVars(lPosArray)
-
-  val u_to_t_map = bddGenerator.B.makePair()
-  for ((u,t) <- uPosArray.zip(tPosArray)) {
-    u_to_t_map.set(u,t)
-  }
-
-  val zeroTime : BDD = bddGenerator.B.buildCube(0,tPosArrayHighToLow)
-
-  val limitMap : Map[Int,BDD] =
-    Map(
-          10 -> bddGenerator.B.buildCube(10,lPosArrayHighToLow)
-    )
-
-  val uMap: Map[Int, BDD] =
-    Map(
-          10 -> bddGenerator.B.buildCube(10 + 1,uPosArrayHighToLow)
-    )
-
-  val maxTimeLimit = 10 + 1
-  var DeltaBDD : BDD = null
-
-  override def setTime(actualDelta: Int) {
-    val reducedDelta = scala.math.min(actualDelta,maxTimeLimit)
-    DeltaBDD = bddGenerator.B.buildCube(reducedDelta,dPosArrayHighToLow)
-  }
-
-// End of declarations related to timed properties
+  val var_A :: var_B :: var_C :: var_da :: var_db :: var_dc :: Nil = declareVariables(("A",false), ("B",false), ("C",false), ("da",false), ("db",false), ("dc",false))(0)
 
   varsInRelations = Set()
-  val indices: List[Int] = List(4)
+  val indices: List[Int] = List(37,40,41,44,45,48,49,22,25,26,29,30,33,34,8,11,12,15,16,19,20)
 
-  pre = Array.fill(7)(bddGenerator.False)
-  now = Array.fill(7)(bddGenerator.False)
+  pre = Array.fill(51)(bddGenerator.False)
+  now = Array.fill(51)(bddGenerator.False)
 
   txt = Array(
-    "Forall m . suc(m) -> ExistsTimeGT . true S[>10] dis(m)",
-      "suc(m) -> ExistsTimeGT . true S[>10] dis(m)",
-      "suc(m)",
-      "ExistsTimeGT . true S[>10] dis(m)",
-      "true S[>10] dis(m)",
-      "true",
-      "dis(m)"
+    "Forall A . Forall B . Forall C . Forall da . Forall db . Forall dc . ((P (end(B) & @ P (end(A) & @ P (begin(B,db) & @ P begin(A,da)))) & P (end(C) & @ P (end(B) & @ P (begin(C,dc) & @ P begin(B,db))))) -> !P (end(C) & @ P (end(A) & @ P (begin(C,dc) & @ P begin(A,da)))))",
+      "Forall B . Forall C . Forall da . Forall db . Forall dc . ((P (end(B) & @ P (end(A) & @ P (begin(B,db) & @ P begin(A,da)))) & P (end(C) & @ P (end(B) & @ P (begin(C,dc) & @ P begin(B,db))))) -> !P (end(C) & @ P (end(A) & @ P (begin(C,dc) & @ P begin(A,da)))))",
+      "Forall C . Forall da . Forall db . Forall dc . ((P (end(B) & @ P (end(A) & @ P (begin(B,db) & @ P begin(A,da)))) & P (end(C) & @ P (end(B) & @ P (begin(C,dc) & @ P begin(B,db))))) -> !P (end(C) & @ P (end(A) & @ P (begin(C,dc) & @ P begin(A,da)))))",
+      "Forall da . Forall db . Forall dc . ((P (end(B) & @ P (end(A) & @ P (begin(B,db) & @ P begin(A,da)))) & P (end(C) & @ P (end(B) & @ P (begin(C,dc) & @ P begin(B,db))))) -> !P (end(C) & @ P (end(A) & @ P (begin(C,dc) & @ P begin(A,da)))))",
+      "Forall db . Forall dc . ((P (end(B) & @ P (end(A) & @ P (begin(B,db) & @ P begin(A,da)))) & P (end(C) & @ P (end(B) & @ P (begin(C,dc) & @ P begin(B,db))))) -> !P (end(C) & @ P (end(A) & @ P (begin(C,dc) & @ P begin(A,da)))))",
+      "Forall dc . ((P (end(B) & @ P (end(A) & @ P (begin(B,db) & @ P begin(A,da)))) & P (end(C) & @ P (end(B) & @ P (begin(C,dc) & @ P begin(B,db))))) -> !P (end(C) & @ P (end(A) & @ P (begin(C,dc) & @ P begin(A,da)))))",
+      "(P (end(B) & @ P (end(A) & @ P (begin(B,db) & @ P begin(A,da)))) & P (end(C) & @ P (end(B) & @ P (begin(C,dc) & @ P begin(B,db))))) -> !P (end(C) & @ P (end(A) & @ P (begin(C,dc) & @ P begin(A,da))))",
+      "P (end(B) & @ P (end(A) & @ P (begin(B,db) & @ P begin(A,da)))) & P (end(C) & @ P (end(B) & @ P (begin(C,dc) & @ P begin(B,db))))",
+      "P (end(B) & @ P (end(A) & @ P (begin(B,db) & @ P begin(A,da))))",
+      "end(B) & @ P (end(A) & @ P (begin(B,db) & @ P begin(A,da)))",
+      "end(B)",
+      "@ P (end(A) & @ P (begin(B,db) & @ P begin(A,da)))",
+      "P (end(A) & @ P (begin(B,db) & @ P begin(A,da)))",
+      "end(A) & @ P (begin(B,db) & @ P begin(A,da))",
+      "end(A)",
+      "@ P (begin(B,db) & @ P begin(A,da))",
+      "P (begin(B,db) & @ P begin(A,da))",
+      "begin(B,db) & @ P begin(A,da)",
+      "begin(B,db)",
+      "@ P begin(A,da)",
+      "P begin(A,da)",
+      "begin(A,da)",
+      "P (end(C) & @ P (end(B) & @ P (begin(C,dc) & @ P begin(B,db))))",
+      "end(C) & @ P (end(B) & @ P (begin(C,dc) & @ P begin(B,db)))",
+      "end(C)",
+      "@ P (end(B) & @ P (begin(C,dc) & @ P begin(B,db)))",
+      "P (end(B) & @ P (begin(C,dc) & @ P begin(B,db)))",
+      "end(B) & @ P (begin(C,dc) & @ P begin(B,db))",
+      "end(B)",
+      "@ P (begin(C,dc) & @ P begin(B,db))",
+      "P (begin(C,dc) & @ P begin(B,db))",
+      "begin(C,dc) & @ P begin(B,db)",
+      "begin(C,dc)",
+      "@ P begin(B,db)",
+      "P begin(B,db)",
+      "begin(B,db)",
+      "!P (end(C) & @ P (end(A) & @ P (begin(C,dc) & @ P begin(A,da))))",
+      "P (end(C) & @ P (end(A) & @ P (begin(C,dc) & @ P begin(A,da))))",
+      "end(C) & @ P (end(A) & @ P (begin(C,dc) & @ P begin(A,da)))",
+      "end(C)",
+      "@ P (end(A) & @ P (begin(C,dc) & @ P begin(A,da)))",
+      "P (end(A) & @ P (begin(C,dc) & @ P begin(A,da)))",
+      "end(A) & @ P (begin(C,dc) & @ P begin(A,da))",
+      "end(A)",
+      "@ P (begin(C,dc) & @ P begin(A,da))",
+      "P (begin(C,dc) & @ P begin(A,da))",
+      "begin(C,dc) & @ P begin(A,da)",
+      "begin(C,dc)",
+      "@ P begin(A,da)",
+      "P begin(A,da)",
+      "begin(A,da)"
   )
 
   debugMonitorState()
@@ -1293,9 +1297,9 @@ now(4)
 /* The specialized Monitor for the provided properties. */
 
 class PropertyMonitor extends Monitor {
-  def eventsInSpec: Set[String] = Set("suc","dis")
+  def eventsInSpec: Set[String] = Set("end","begin")
 
-  formulae ++= List(new Formula_commands(this))
+  formulae ++= List(new Formula_P4(this))
 }
       
 object TraceMonitor {

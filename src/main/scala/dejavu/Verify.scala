@@ -138,7 +138,7 @@ object Verify {
         val p = new Parser
         val file = arguments(0)
         val spec = p.parseFile(file)
-        //println(spec)
+        println(spec)
         spec.translate()
       }
       if (args.length > 1) compileAndExecute(args.tail.mkString(" "))

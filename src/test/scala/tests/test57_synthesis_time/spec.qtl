@@ -1,0 +1,28 @@
+
+// 1.
+
+prop P1 : !(Exists A . Exists B . Exists d .  P ( end(B)  & @ P ( begin(B, d) & @ P ( end(A) & @ P begin(A, d) ) ) ) )
+
+
+// 4.
+
+prop P2 : ! Exists  A . Exists B . Exists C . Exists da . Exists db . Exists dc .
+  ( end(A) & @ P ( end(B) & @ P ( end (C) & @ P ( begin (C,dc) & @ P ( begin(B,db) & @ P begin(A,da))))))
+
+
+// 7.
+
+prop P3 : Forall A . Forall B . ( ( P end(B) & @ P ( begin(B,2) & @ P ( end(A) & @ P begin(A,2) ) ) ) ->
+              ! Exists C .Exists d . (  P ( begin(B, 2) &  @P ( end(C) &
+                                      @ P ( begin(C, d) & @ P end(A) ) ) ) ) )
+
+
+// 10.
+
+prop P4 : Forall A . Forall B . Forall C . Forall da . Forall db . Forall dc .
+(  ( P  (end(B) & @ P ( end(A) & @ P ( begin(B,db)  & @ P begin(A,da) ) ) )  &
+                                                  P ( end(C) & @ P ( end(B) & @ P ( begin(C,dc)  & @ P begin(B,db) ) ) ) ) ->
+                                                ! P ( end(C) & @ P ( end(A) & @ P ( begin(C,dc)  & @ P begin(A,da) ) ) ) )
+
+// -------------
+

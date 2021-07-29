@@ -1,0 +1,1 @@
+prop test : (!(Exists x. ((P publish(x)) & (!(P approve(x))))))

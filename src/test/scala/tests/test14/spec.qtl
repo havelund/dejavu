@@ -1,2 +1,2 @@
 
-prop p : Exists x . Exists y . x < y & P a(x) & P b(y)
+prop p : Exists x . Exists y . (x < y & P a(x) & P b(y))

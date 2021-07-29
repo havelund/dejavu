@@ -1,2 +1,2 @@
 
-prop p: Forall x . a(x) -> x < 5
+prop p: Forall x . (a(x) -> x < 5)

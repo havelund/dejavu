@@ -178,11 +178,11 @@ class Parser extends JavaTokenParsers {
       } |
       "[" ~ ltl ~ "," ~ ltl ~ ")" ^^ {
         case _ ~ ltl1 ~ _ ~ ltl2 ~ _ => Interval(ltl1, ltl2)
-      } |
-      "Exists" ~ name ~ "." ~ ltl ^^ {
+       } |
+      "Exists" ~ name ~ "." ~ ltlLeaf ^^ { // TODO : change back to ltl
         case _ ~ id ~ _ ~ ltl => Exists(id, ltl)
       } |
-      "Forall" ~ name ~ "." ~ ltl ^^ {
+      "Forall" ~ name ~ "." ~ ltlLeaf ^^ { // TODO : change back to ltl
         case _ ~ id ~ _ ~ ltl => Forall(id, ltl)
       } |
       "exists" ~ name ~ "." ~ ltl ^^ {

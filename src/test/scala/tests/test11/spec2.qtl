@@ -1,2 +1,2 @@
 
-prop p : Forall x . Exists y . (a(x) -> !c(y) S b(x,y))
+prop p : Forall x . Exists y . (a(x) -> (!c(y) S b(x,y)))

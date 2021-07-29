@@ -1,2 +1,2 @@
 
-prop p: forall x . exists y . x < y & P a(x,y)
+prop p: forall x . exists y . (x < y & P a(x,y))

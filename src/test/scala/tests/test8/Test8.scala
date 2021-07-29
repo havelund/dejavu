@@ -9,6 +9,7 @@ class Test8 extends TestCase {
   val spec = s"$TEST/spec.qtl"
   val log1 = s"$TEST/log1.csv"
   val log2 = s"$TEST/log2.csv"
+  val log3 = s"$TEST/log3.csv"
 
   @Test def test1(): Unit = {
     Verify(spec,log1, "3")
@@ -18,6 +19,11 @@ class Test8 extends TestCase {
   @Test def test2(): Unit = {
     Verify(spec,log2, "3")
     checkResults(7)
+  }
+
+  @Test def test3(): Unit = {
+    Verify(spec,log3, "3")
+    checkResults(7, 8)
   }
 }
 
