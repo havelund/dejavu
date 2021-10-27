@@ -12,16 +12,6 @@
         Version 2.1, March 4 - 2020
 
   
-## Copyright statement
-
-Copyright 2020, by the California Institute of Technology. ALL RIGHTS RESERVED.
-United States Government Sponsorship acknowledged. Any commercial use must be negotiated
-with the Office of Technology Transfer at the California Institute of Technology.
-This software may be subject to U.S. export control laws. By accepting this software,
-the user agrees to comply with all applicable U.S. export laws and regulations. User has
-the responsibility to obtain export licenses, or other export authority as may be required
-before exporting such information to foreign countries or providing access to foreign persons.
-
 ## Overview
 
 DejaVu is a program written in Scala for monitoring event streams (traces) against temporal logic formulas. The formulas are written in a first-order past time linear temporal logic, with the addition of macros and recursive rules. The logic also supports reasoning about time.

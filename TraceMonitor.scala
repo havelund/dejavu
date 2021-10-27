@@ -1155,6 +1155,283 @@ abstract class Formula(val monitor: Monitor) {
 
 
 /*
+  prop P1 : !(Exists A . Exists B . Exists d . P (end(B) & @ P (begin(B,d) & @ P (end(A) & @ P begin(A,d))))) 
+*/
+
+class Formula_P1(monitor: Monitor) extends Formula(monitor) {
+          
+  override def evaluate(): Boolean = {
+    // assignments1 (leaf nodes that are not rule calls):
+      now(6) = build("end")(V("B"))
+      now(10) = build("begin")(V("B"),V("d"))
+      now(14) = build("end")(V("A"))
+      now(17) = build("begin")(V("A"),V("d"))
+    // assignments2 (rule nodes excluding what is below @ and excluding leaf nodes):
+    // assignments3 (rule calls):
+    // assignments4 (the rest of rules that are below @ and excluding leaf nodes):
+    // assignments5 (main formula excluding leaf nodes):
+      now(16) = now(17).or(pre(16))
+      now(15) = pre(16)
+      now(13) = now(14).and(now(15))
+      now(12) = now(13).or(pre(12))
+      now(11) = pre(12)
+      now(9) = now(10).and(now(11))
+      now(8) = now(9).or(pre(8))
+      now(7) = pre(8)
+      now(5) = now(6).and(now(7))
+      now(4) = now(5).or(pre(4))
+      now(3) = now(4).exist(var_d.quantvar)
+      now(2) = now(3).exist(var_B.quantvar)
+      now(1) = now(2).exist(var_A.quantvar)
+      now(0) = now(1).not()
+
+    debugMonitorState()
+
+    val error = now(0).isZero
+    if (error) monitor.recordResult()
+    tmp = now
+    now = pre
+    pre = tmp
+    touchedByLastEvent = emptyTouchedSet
+    !error
+  }
+
+  val var_A :: var_B :: var_d :: Nil = declareVariables(("A",false), ("B",false), ("d",false))(0)
+
+  varsInRelations = Set()
+  val indices: List[Int] = List(4,7,8,11,12,15,16)
+
+  pre = Array.fill(18)(bddGenerator.False)
+  now = Array.fill(18)(bddGenerator.False)
+
+  txt = Array(
+    "!(Exists A . Exists B . Exists d . P (end(B) & @ P (begin(B,d) & @ P (end(A) & @ P begin(A,d)))))",
+      "Exists A . Exists B . Exists d . P (end(B) & @ P (begin(B,d) & @ P (end(A) & @ P begin(A,d))))",
+      "Exists B . Exists d . P (end(B) & @ P (begin(B,d) & @ P (end(A) & @ P begin(A,d))))",
+      "Exists d . P (end(B) & @ P (begin(B,d) & @ P (end(A) & @ P begin(A,d))))",
+      "P (end(B) & @ P (begin(B,d) & @ P (end(A) & @ P begin(A,d))))",
+      "end(B) & @ P (begin(B,d) & @ P (end(A) & @ P begin(A,d)))",
+      "end(B)",
+      "@ P (begin(B,d) & @ P (end(A) & @ P begin(A,d)))",
+      "P (begin(B,d) & @ P (end(A) & @ P begin(A,d)))",
+      "begin(B,d) & @ P (end(A) & @ P begin(A,d))",
+      "begin(B,d)",
+      "@ P (end(A) & @ P begin(A,d))",
+      "P (end(A) & @ P begin(A,d))",
+      "end(A) & @ P begin(A,d)",
+      "end(A)",
+      "@ P begin(A,d)",
+      "P begin(A,d)",
+      "begin(A,d)"
+  )
+
+  debugMonitorState()
+}
+        
+
+/*
+  prop P2 : !Exists A . Exists B . Exists C . Exists da . Exists db . Exists dc . (end(A) & @ P (end(B) & @ P (end(C) & @ P (begin(C,dc) & @ P (begin(B,db) & @ P begin(A,da)))))) 
+*/
+
+class Formula_P2(monitor: Monitor) extends Formula(monitor) {
+          
+  override def evaluate(): Boolean = {
+    // assignments1 (leaf nodes that are not rule calls):
+      now(8) = build("end")(V("A"))
+      now(12) = build("end")(V("B"))
+      now(16) = build("end")(V("C"))
+      now(20) = build("begin")(V("C"),V("dc"))
+      now(24) = build("begin")(V("B"),V("db"))
+      now(27) = build("begin")(V("A"),V("da"))
+    // assignments2 (rule nodes excluding what is below @ and excluding leaf nodes):
+    // assignments3 (rule calls):
+    // assignments4 (the rest of rules that are below @ and excluding leaf nodes):
+    // assignments5 (main formula excluding leaf nodes):
+      now(26) = now(27).or(pre(26))
+      now(25) = pre(26)
+      now(23) = now(24).and(now(25))
+      now(22) = now(23).or(pre(22))
+      now(21) = pre(22)
+      now(19) = now(20).and(now(21))
+      now(18) = now(19).or(pre(18))
+      now(17) = pre(18)
+      now(15) = now(16).and(now(17))
+      now(14) = now(15).or(pre(14))
+      now(13) = pre(14)
+      now(11) = now(12).and(now(13))
+      now(10) = now(11).or(pre(10))
+      now(9) = pre(10)
+      now(7) = now(8).and(now(9))
+      now(6) = now(7).exist(var_dc.quantvar)
+      now(5) = now(6).exist(var_db.quantvar)
+      now(4) = now(5).exist(var_da.quantvar)
+      now(3) = now(4).exist(var_C.quantvar)
+      now(2) = now(3).exist(var_B.quantvar)
+      now(1) = now(2).exist(var_A.quantvar)
+      now(0) = now(1).not()
+
+    debugMonitorState()
+
+    val error = now(0).isZero
+    if (error) monitor.recordResult()
+    tmp = now
+    now = pre
+    pre = tmp
+    touchedByLastEvent = emptyTouchedSet
+    !error
+  }
+
+  val var_A :: var_B :: var_C :: var_da :: var_db :: var_dc :: Nil = declareVariables(("A",false), ("B",false), ("C",false), ("da",false), ("db",false), ("dc",false))(0)
+
+  varsInRelations = Set()
+  val indices: List[Int] = List(9,10,13,14,17,18,21,22,25,26)
+
+  pre = Array.fill(28)(bddGenerator.False)
+  now = Array.fill(28)(bddGenerator.False)
+
+  txt = Array(
+    "!Exists A . Exists B . Exists C . Exists da . Exists db . Exists dc . (end(A) & @ P (end(B) & @ P (end(C) & @ P (begin(C,dc) & @ P (begin(B,db) & @ P begin(A,da))))))",
+      "Exists A . Exists B . Exists C . Exists da . Exists db . Exists dc . (end(A) & @ P (end(B) & @ P (end(C) & @ P (begin(C,dc) & @ P (begin(B,db) & @ P begin(A,da))))))",
+      "Exists B . Exists C . Exists da . Exists db . Exists dc . (end(A) & @ P (end(B) & @ P (end(C) & @ P (begin(C,dc) & @ P (begin(B,db) & @ P begin(A,da))))))",
+      "Exists C . Exists da . Exists db . Exists dc . (end(A) & @ P (end(B) & @ P (end(C) & @ P (begin(C,dc) & @ P (begin(B,db) & @ P begin(A,da))))))",
+      "Exists da . Exists db . Exists dc . (end(A) & @ P (end(B) & @ P (end(C) & @ P (begin(C,dc) & @ P (begin(B,db) & @ P begin(A,da))))))",
+      "Exists db . Exists dc . (end(A) & @ P (end(B) & @ P (end(C) & @ P (begin(C,dc) & @ P (begin(B,db) & @ P begin(A,da))))))",
+      "Exists dc . (end(A) & @ P (end(B) & @ P (end(C) & @ P (begin(C,dc) & @ P (begin(B,db) & @ P begin(A,da))))))",
+      "end(A) & @ P (end(B) & @ P (end(C) & @ P (begin(C,dc) & @ P (begin(B,db) & @ P begin(A,da)))))",
+      "end(A)",
+      "@ P (end(B) & @ P (end(C) & @ P (begin(C,dc) & @ P (begin(B,db) & @ P begin(A,da)))))",
+      "P (end(B) & @ P (end(C) & @ P (begin(C,dc) & @ P (begin(B,db) & @ P begin(A,da)))))",
+      "end(B) & @ P (end(C) & @ P (begin(C,dc) & @ P (begin(B,db) & @ P begin(A,da))))",
+      "end(B)",
+      "@ P (end(C) & @ P (begin(C,dc) & @ P (begin(B,db) & @ P begin(A,da))))",
+      "P (end(C) & @ P (begin(C,dc) & @ P (begin(B,db) & @ P begin(A,da))))",
+      "end(C) & @ P (begin(C,dc) & @ P (begin(B,db) & @ P begin(A,da)))",
+      "end(C)",
+      "@ P (begin(C,dc) & @ P (begin(B,db) & @ P begin(A,da)))",
+      "P (begin(C,dc) & @ P (begin(B,db) & @ P begin(A,da)))",
+      "begin(C,dc) & @ P (begin(B,db) & @ P begin(A,da))",
+      "begin(C,dc)",
+      "@ P (begin(B,db) & @ P begin(A,da))",
+      "P (begin(B,db) & @ P begin(A,da))",
+      "begin(B,db) & @ P begin(A,da)",
+      "begin(B,db)",
+      "@ P begin(A,da)",
+      "P begin(A,da)",
+      "begin(A,da)"
+  )
+
+  debugMonitorState()
+}
+        
+
+/*
+  prop P3 : Forall A . Forall B . ((P end(B) & @ P (begin(B,''2'') & @ P (end(A) & @ P begin(A,''2'')))) -> !Exists C . Exists d . (P (begin(B,''2'') & @ P (end(C) & @ P (begin(C,d) & @ P end(A)))))) 
+*/
+
+class Formula_P3(monitor: Monitor) extends Formula(monitor) {
+          
+  override def evaluate(): Boolean = {
+    // assignments1 (leaf nodes that are not rule calls):
+      now(5) = build("end")(V("B"))
+      now(9) = build("begin")(V("B"),C("2"))
+      now(13) = build("end")(V("A"))
+      now(16) = build("begin")(V("A"),C("2"))
+      now(22) = build("begin")(V("B"),C("2"))
+      now(26) = build("end")(V("C"))
+      now(30) = build("begin")(V("C"),V("d"))
+      now(33) = build("end")(V("A"))
+    // assignments2 (rule nodes excluding what is below @ and excluding leaf nodes):
+    // assignments3 (rule calls):
+    // assignments4 (the rest of rules that are below @ and excluding leaf nodes):
+    // assignments5 (main formula excluding leaf nodes):
+      now(4) = now(5).or(pre(4))
+      now(15) = now(16).or(pre(15))
+      now(14) = pre(15)
+      now(12) = now(13).and(now(14))
+      now(11) = now(12).or(pre(11))
+      now(10) = pre(11)
+      now(8) = now(9).and(now(10))
+      now(7) = now(8).or(pre(7))
+      now(6) = pre(7)
+      now(3) = now(4).and(now(6))
+      now(32) = now(33).or(pre(32))
+      now(31) = pre(32)
+      now(29) = now(30).and(now(31))
+      now(28) = now(29).or(pre(28))
+      now(27) = pre(28)
+      now(25) = now(26).and(now(27))
+      now(24) = now(25).or(pre(24))
+      now(23) = pre(24)
+      now(21) = now(22).and(now(23))
+      now(20) = now(21).or(pre(20))
+      now(19) = now(20).exist(var_d.quantvar)
+      now(18) = now(19).exist(var_C.quantvar)
+      now(17) = now(18).not()
+      now(2) = now(3).not().or(now(17))
+      now(1) = now(2).forAll(var_B.quantvar)
+      now(0) = now(1).forAll(var_A.quantvar)
+
+    debugMonitorState()
+
+    val error = now(0).isZero
+    if (error) monitor.recordResult()
+    tmp = now
+    now = pre
+    pre = tmp
+    touchedByLastEvent = emptyTouchedSet
+    !error
+  }
+
+  val var_A :: var_B :: var_C :: var_d :: Nil = declareVariables(("A",false), ("B",false), ("C",false), ("d",false))(0)
+
+  varsInRelations = Set()
+  val indices: List[Int] = List(20,23,24,27,28,31,32,6,7,10,11,14,15,4)
+
+  pre = Array.fill(34)(bddGenerator.False)
+  now = Array.fill(34)(bddGenerator.False)
+
+  txt = Array(
+    "Forall A . Forall B . ((P end(B) & @ P (begin(B,''2'') & @ P (end(A) & @ P begin(A,''2'')))) -> !Exists C . Exists d . (P (begin(B,''2'') & @ P (end(C) & @ P (begin(C,d) & @ P end(A))))))",
+      "Forall B . ((P end(B) & @ P (begin(B,''2'') & @ P (end(A) & @ P begin(A,''2'')))) -> !Exists C . Exists d . (P (begin(B,''2'') & @ P (end(C) & @ P (begin(C,d) & @ P end(A))))))",
+      "(P end(B) & @ P (begin(B,''2'') & @ P (end(A) & @ P begin(A,''2'')))) -> !Exists C . Exists d . (P (begin(B,''2'') & @ P (end(C) & @ P (begin(C,d) & @ P end(A)))))",
+      "P end(B) & @ P (begin(B,''2'') & @ P (end(A) & @ P begin(A,''2'')))",
+      "P end(B)",
+      "end(B)",
+      "@ P (begin(B,''2'') & @ P (end(A) & @ P begin(A,''2'')))",
+      "P (begin(B,''2'') & @ P (end(A) & @ P begin(A,''2'')))",
+      "begin(B,''2'') & @ P (end(A) & @ P begin(A,''2''))",
+      "begin(B,''2'')",
+      "@ P (end(A) & @ P begin(A,''2''))",
+      "P (end(A) & @ P begin(A,''2''))",
+      "end(A) & @ P begin(A,''2'')",
+      "end(A)",
+      "@ P begin(A,''2'')",
+      "P begin(A,''2'')",
+      "begin(A,''2'')",
+      "!Exists C . Exists d . (P (begin(B,''2'') & @ P (end(C) & @ P (begin(C,d) & @ P end(A)))))",
+      "Exists C . Exists d . (P (begin(B,''2'') & @ P (end(C) & @ P (begin(C,d) & @ P end(A)))))",
+      "Exists d . (P (begin(B,''2'') & @ P (end(C) & @ P (begin(C,d) & @ P end(A)))))",
+      "P (begin(B,''2'') & @ P (end(C) & @ P (begin(C,d) & @ P end(A))))",
+      "begin(B,''2'') & @ P (end(C) & @ P (begin(C,d) & @ P end(A)))",
+      "begin(B,''2'')",
+      "@ P (end(C) & @ P (begin(C,d) & @ P end(A)))",
+      "P (end(C) & @ P (begin(C,d) & @ P end(A)))",
+      "end(C) & @ P (begin(C,d) & @ P end(A))",
+      "end(C)",
+      "@ P (begin(C,d) & @ P end(A))",
+      "P (begin(C,d) & @ P end(A))",
+      "begin(C,d) & @ P end(A)",
+      "begin(C,d)",
+      "@ P end(A)",
+      "P end(A)",
+      "end(A)"
+  )
+
+  debugMonitorState()
+}
+        
+
+/*
   prop P4 : Forall A . Forall B . Forall C . Forall da . Forall db . Forall dc . ((P (end(B) & @ P (end(A) & @ P (begin(B,db) & @ P begin(A,da)))) & P (end(C) & @ P (end(B) & @ P (begin(C,dc) & @ P begin(B,db))))) -> !P (end(C) & @ P (end(A) & @ P (begin(C,dc) & @ P begin(A,da))))) 
 */
 
@@ -1299,36 +1576,17 @@ class Formula_P4(monitor: Monitor) extends Formula(monitor) {
 class PropertyMonitor extends Monitor {
   def eventsInSpec: Set[String] = Set("end","begin")
 
-  formulae ++= List(new Formula_P4(this))
+  formulae ++= List(new Formula_P1(this),new Formula_P2(this),new Formula_P3(this),new Formula_P4(this))
 }
       
 object TraceMonitor {
   def main(args: Array[String]): Unit = {
-    if (1 <= args.length && args.length <= 3) {
-      if (args.length > 1) Options.BITS = args(1).toInt
-      val m = new PropertyMonitor
-      val file = args(0)
-      if (args.length == 3 && args(2) == "debug") Options.DEBUG = true
-      if (args.length == 3 && args(2) == "profile") Options.PROFILE = true
-      try {
-        openResultFile("dejavu-results")
-        if (Options.PROFILE) {
-          openProfileFile("dejavu-profile.csv")
-          m.printProfileHeader()
-        }
-        m.submitCSVFile(file)
-      } catch {
-          case e: Throwable =>
-            println(s"\n*** $e\n")
-            // e.printStackTrace()
-      } finally {
-        closeResultFile()
-        if (Options.PROFILE) closeProfileFile()
-      }
-    } else {
-      println("*** call with these arguments:")
-      println("<logfile> [<bits> [debug|profile]]")
-    }
+    println('online monitoring')
+    val m = new PropertyMonitor
+    m.submit("open",List("file42",10))
+    m.submit("close",List("file42"))
+    // ...
+    m.end() // if there is an end to it
   }
 }
       
