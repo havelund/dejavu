@@ -38,7 +38,13 @@ class TestCase {
     if (Verify.verified) {
       val expect = lines.toList.map(_.toString)
       val result = readResult()
-      assert(expect == result,
+      // Violations (plain event numbers) must match in order. Garbage
+      // collection notices ("n -- value") are emitted in hash-map iteration
+      // order, which varies across JVM/Scala versions, so they are compared
+      // order-insensitively.
+      def normalize(list: List[String]): (List[String], List[String]) =
+        (list.filter(!_.contains("--")), list.filter(_.contains("--")).sorted)
+      assert(normalize(expect) == normalize(result),
         s"""
            |expected : (${expect.mkString(",")})
            |=/=
