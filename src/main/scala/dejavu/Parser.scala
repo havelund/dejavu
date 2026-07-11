@@ -4,11 +4,11 @@ import scala.util.parsing.combinator._
 import java.io._
 
 
-class Parser extends JavaTokenParsers {
+class Parser extends JavaTokenParsers with PackratParsers {
 
   protected override val whiteSpace = """(\s|/\*(.|\n|\r)*?\*/|//.*\n)+""".r
 
-  def reserved: Parser[String] =
+  lazy val reserved: PackratParser[String] =
     "prop\\b".r |
       "where\\b".r |
       "pred\\b".r |
@@ -25,21 +25,21 @@ class Parser extends JavaTokenParsers {
       "true\\b".r |
       "false\\b".r
 
-  def le = "<=" ^^ (_ => LEOP)
+  lazy val le = "<=" ^^ (_ => LEOP)
 
-  def lt = "<" ^^ (_ => LTOP)
+  lazy val lt = "<" ^^ (_ => LTOP)
 
-  def ge = ">=" ^^ (_ => GEOP)
+  lazy val ge = ">=" ^^ (_ => GEOP)
 
-  def gt = ">" ^^ (_ => GTOP)
+  lazy val gt = ">" ^^ (_ => GTOP)
 
-  def eq = "=" ^^ (_ => EQOP)
+  lazy val eq = "=" ^^ (_ => EQOP)
 
-  def oper = le | lt | ge | gt | eq
+  lazy val oper = le | lt | ge | gt | eq
 
   val name: Parser[String] = not(reserved) ~> ident
 
-  def document: Parser[Document] = rep(definition) ^^ {
+  lazy val document: PackratParser[Document] = rep(definition) ^^ {
     case definitions => Document(definitions.flatten)
   }
 
@@ -48,7 +48,7 @@ class Parser extends JavaTokenParsers {
       propertydef ^^ { case p => List(p) } |
       eventdef
 
-  def macrodef: Parser[Macro] =
+  lazy val macrodef: PackratParser[Macro] =
     "pred" ~ name ~ opt("(" ~> repsep(name, ",") <~ ")") ~ "=" ~ ltl ^^ {
       case _ ~ name ~ optargs ~ _ ~ ltl =>
         val argList: List[String] = optargs match {
@@ -58,7 +58,7 @@ class Parser extends JavaTokenParsers {
         Macro(name, argList, ltl)
     }
 
-  def propertydef: Parser[Property] =
+  lazy val propertydef: PackratParser[Property] =
     "prop" ~ name ~ ":" ~ ltl ~ opt("where" ~> repsep(relationdef, ",")) ^^ {
       case _ ~ id ~ _ ~ ltl ~ optreldefs =>
         val relationList =
@@ -69,7 +69,7 @@ class Parser extends JavaTokenParsers {
         Property(id, ltl, relationList)
     }
 
-  def relationdef: Parser[Rule] =
+  lazy val relationdef: PackratParser[Rule] =
     name ~ opt("(" ~> repsep(name, ",") <~ ")") ~ ":=" ~ ltl ^^ {
       case name ~ optargs ~ _ ~ ltl =>
         val argList: List[String] = optargs match {
@@ -91,22 +91,22 @@ class Parser extends JavaTokenParsers {
         }
     }
 
-  def ltl: Parser[LTL] =
+  lazy val ltl: PackratParser[LTL] =
     ltl1 ~ rep(("->" | "<->") ~ ltl1) ^^ {
       case ltl ~ ltls => mkBinary(ltl, ltls)
     }
 
-  def ltl1: Parser[LTL] =
+  lazy val ltl1: PackratParser[LTL] =
     ltl2 ~ rep("|" ~ ltl2) ^^ {
       case ltl ~ ltls => mkBinary(ltl, ltls)
     }
 
-  def ltl2: Parser[LTL] =
+  lazy val ltl2: PackratParser[LTL] =
     ltl3 ~ rep("&" ~ ltl3) ^^ {
       case ltl ~ ltls => mkBinary(ltl, ltls)
     }
 
-  def ltl3: Parser[LTL] =
+  lazy val ltl3: PackratParser[LTL] =
     ltlLeaf ~ "S" ~ ltTime ~ ltlLeaf ^^ {
       case ltl1 ~ _ ~ time ~ ltl2 => ExistsTime(SinceTimeLE(ltl1, time, ltl2))
     } |
@@ -121,17 +121,17 @@ class Parser extends JavaTokenParsers {
       } |
       ltlLeaf
 
-  def ltTime: Parser[Int] =
+  lazy val ltTime: PackratParser[Int] =
     "[<=" ~ wholeNumber ~ "]" ^^ {
       case _ ~ n ~ _ => n.toInt
     }
 
-  def gtTime: Parser[Int] =
+  lazy val gtTime: PackratParser[Int] =
     "[>" ~ wholeNumber ~ "]" ^^ {
       case _ ~ n ~ _ => n.toInt
     }
 
-  def ltlLeaf: Parser[LTL] =
+  lazy val ltlLeaf: PackratParser[LTL] =
     "true" ^^ {
       case _ => True
     } |
@@ -179,10 +179,10 @@ class Parser extends JavaTokenParsers {
       "[" ~ ltl ~ "," ~ ltl ~ ")" ^^ {
         case _ ~ ltl1 ~ _ ~ ltl2 ~ _ => Interval(ltl1, ltl2)
        } |
-      "Exists" ~ name ~ "." ~ ltlLeaf ^^ { // TODO : change back to ltl
+      "Exists" ~ name ~ "." ~ ltl ^^ {
         case _ ~ id ~ _ ~ ltl => Exists(id, ltl)
       } |
-      "Forall" ~ name ~ "." ~ ltlLeaf ^^ { // TODO : change back to ltl
+      "Forall" ~ name ~ "." ~ ltl ^^ {
         case _ ~ id ~ _ ~ ltl => Forall(id, ltl)
       } |
       "exists" ~ name ~ "." ~ ltl ^^ {
@@ -195,9 +195,9 @@ class Parser extends JavaTokenParsers {
         case _ ~ ltl ~ _ => Paren(ltl)
       }
 
-  def const: Parser[Any] = stringLiteral | wholeNumber
+  lazy val const: PackratParser[Any] = stringLiteral | wholeNumber
 
-  def constOrVar: Parser[ConstOrVar] =
+  lazy val constOrVar: PackratParser[ConstOrVar] =
     name ^^ {
       case id => VPat(id)
     } |
